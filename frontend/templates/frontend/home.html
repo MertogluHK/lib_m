@@ -1,0 +1,82 @@
+{% extends 'frontend/base.html' %}
+{% load static %}
+{% block title %}LIB-M - Ana Sayfa{% endblock %}
+{% block content %}
+<section class="flex flex-col md:flex-row items-center gap-8 py-10">
+	<div class="flex-1">
+		<h1 class="text-3xl md:text-5xl font-bold tracking-tight">LIB-M ile kütüphaneni yönet, kitapları keşfet</h1>
+		<p class="mt-3 text-gray-600 dark:text-gray-300">LIB-M ile kitapları görüntüle, yorumla ve rezervasyon oluştur.</p>
+		<div class="mt-6 flex gap-3">
+			<a href="/books/" class="px-5 py-3 rounded bg-blue-600 text-white hover:bg-blue-700">Kitapları Keşfet</a>
+			<a href="/register/" class="px-5 py-3 rounded border border-blue-600 text-blue-600 hover:bg-blue-50">Hemen Kayıt Ol</a>
+		</div>
+	</div>
+	<div class="flex-1">
+		<div class="aspect-video rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden shadow-lg">
+			<img
+				src="{% static 'images/library-hero.webp' %}"
+				alt="Eski kitaplarla dolu sıcak kütüphane ortamı"
+				class="w-full h-full object-cover"
+				loading="lazy"
+				decoding="async"
+			/>
+		</div>
+	</div>
+</section>
+
+<section class="py-10">
+	<h2 class="text-2xl font-bold mb-6">Öne Çıkan Kitaplar</h2>
+	<div id="featured-books" class="grid grid-cols-1 md:grid-cols-3 gap-6">
+		<!-- Featured books will be loaded here -->
+	</div>
+</section>
+{% endblock %}
+{% block scripts %}
+<script>
+const FALLBACK_IMAGE = "{% static 'images/library-hero.webp' %}";
+
+async function loadFeaturedBooks() {
+	const res = await window.libmApi('/api/books/?sort=rating_desc&page_size=3', { silent401: true });
+	const container = document.getElementById('featured-books');
+	if (!res.ok) {
+		container.innerHTML = '<p class="text-gray-500 dark:text-gray-400">Kitaplar yüklenemedi.</p>';
+		return;
+	}
+	const allBooks = await res.json();
+	const booksArray = Array.isArray(allBooks.results) ? allBooks.results : allBooks;
+	let featuredBooks = booksArray.slice(0, 3).filter(book => typeof book.average_rating === 'number');
+	if (!featuredBooks.length) {
+		featuredBooks = booksArray.slice(0, 3);
+	}
+	
+	if (featuredBooks.length === 0) {
+		container.innerHTML = '<p class="text-gray-500 dark:text-gray-400">Henüz kitap yok.</p>';
+		return;
+	}
+	
+	container.innerHTML = featuredBooks.map(book => {
+		const avgRating = book.average_rating || 0;
+		const filledStars = '★'.repeat(Math.round(avgRating));
+		const emptyStars = '☆'.repeat(5 - Math.round(avgRating));
+		const coverUrl = book.cover_image || FALLBACK_IMAGE;
+		
+		return `
+		<a href="/books/${book.id}/" class="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 overflow-hidden hover:shadow-lg transition-shadow focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-500">
+			<div class="aspect-[2/3] bg-white dark:bg-gray-950 overflow-hidden flex items-center justify-center p-3">
+				<img src="${coverUrl}" alt="${book.title}" class="max-w-full max-h-full object-contain" loading="lazy" decoding="async" onerror="this.onerror=null;this.src='${FALLBACK_IMAGE}'" />
+			</div>
+			<div class="p-4">
+				<h3 class="font-semibold text-lg mb-2 line-clamp-2 min-h-[3.25rem]">${book.title}</h3>
+				<div class="flex items-center gap-1 text-yellow-400">
+					<span>${filledStars}${emptyStars}</span>
+					<span class="text-sm text-gray-600 dark:text-gray-400 ml-1">${avgRating.toFixed(1)}</span>
+				</div>
+			</div>
+		</a>
+		`;
+	}).join('');
+}
+
+loadFeaturedBooks();
+</script>
+{% endblock %}

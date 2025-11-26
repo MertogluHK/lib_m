@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="tr" class="h-full">
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<title>{% block title %}LIB-M{% endblock %}</title>
+	<script src="https://cdn.tailwindcss.com"></script>
+	<script>
+		// Tailwind dark mode via class
+		tailwind.config = { theme: { extend: {} }, darkMode: 'class' };
+	</script>
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700;800&display=swap" rel="stylesheet">
+	<link rel="stylesheet" href="/static/css/styles.css" />
+</head>
+<body class="min-h-full bg-gray-50 text-gray-900 dark:bg-gray-900 dark:text-gray-100">
+	<header class="border-b border-gray-200 dark:border-gray-800 bg-white/70 dark:bg-gray-900/70 backdrop-blur sticky top-0 z-10">
+		<div class="mx-auto max-w-6xl px-2">
+			<div class="flex h-14 items-center justify-between">
+				<div class="flex items-center gap-2">
+					<a href="/" class="brand-font font-extrabold text-2xl md:text-3xl tracking-tight">LIB-M</a>
+					<button id="admin-quick-link" class="hidden px-2 py-1 text-xs rounded border border-blue-600 text-blue-600 hover:bg-blue-50 dark:hover:bg-gray-800" title="Yönetim Paneli">Panel</button>
+				</div>
+				<nav class="hidden md:flex items-center gap-2">
+					<a href="/" class="px-3 py-2 rounded hover:bg-gray-100 dark:hover:bg-gray-800">Ana Sayfa</a>
+					<a href="/books/" class="px-3 py-2 rounded hover:bg-gray-100 dark:hover:bg-gray-800">Kitaplar</a>
+					<a href="/community/" class="px-3 py-2 rounded hover:bg-gray-100 dark:hover:bg-gray-800">Topluluk</a>
+					<a href="/profile/" class="px-3 py-2 rounded hover:bg-gray-100 dark:hover:bg-gray-800">Profil</a>
+				</nav>
+				<div class="flex items-center gap-2">
+					<button id="theme-toggle" class="px-3 py-2 rounded border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800" title="Tema">
+						🌙
+					</button>
+					<a href="/login/" id="nav-login" class="px-3 py-2 rounded bg-blue-600 text-white hover:bg-blue-700">Giriş</a>
+					<a href="/register/" id="nav-register" class="px-3 py-2 rounded border border-blue-600 text-blue-600 hover:bg-blue-50">Kayıt</a>
+					<button id="nav-logout" class="hidden px-3 py-2 rounded border border-red-600 text-red-600 hover:bg-red-50">Çıkış</button>
+				</div>
+			</div>
+		</div>
+	</header>
+	<main class="mx-auto max-w-6xl px-2 py-6">
+		{% block content %}{% endblock %}
+	</main>
+	<footer class="mx-auto max-w-6xl px-2 py-8 text-sm text-gray-500 dark:text-gray-400">
+		© {{ now|date:'Y' }} LIB-M
+	</footer>
+	<div id="toast-root" class="fixed bottom-4 right-4 z-50 space-y-2"></div>
+	{% block reserve_cta %}
+	<a href="/reservations/" class="fixed bottom-6 right-6 z-40 inline-flex items-center gap-2 rounded-full bg-orange-500 text-white px-5 py-3 shadow-lg hover:bg-orange-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-500 dark:bg-orange-500 dark:hover:bg-orange-400" aria-label="Rezervasyon oluştur">
+		Rezervasyon Oluştur
+	</a>
+	{% endblock %}
+	<script src="/static/js/app.js"></script>
+	{% block scripts %}{% endblock %}
+</body>
+</html>

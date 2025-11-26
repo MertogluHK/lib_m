@@ -1,0 +1,361 @@
+{% extends 'frontend/base.html' %}
+{% load static %}
+{% block title %}Kitaplar{% endblock %}
+{% block content %}
+<div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+	<h2 class="text-2xl font-semibold">Kitaplar</h2>
+	<div class="flex items-center gap-2 text-sm">
+		<label for="sort-select" class="font-medium text-gray-600 dark:text-gray-300">Sırala:</label>
+		<select id="sort-select" class="px-3 py-2 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800">
+			<option value="title_asc">Alfabetik (A→Z)</option>
+			<option value="title_desc">Alfabetik (Z→A)</option>
+			<option value="created_desc">Eklenme Tarihi (Yeni → Eski)</option>
+			<option value="created_asc">Eklenme Tarihi (Eski → Yeni)</option>
+			<option value="stock_desc">Stok (Yüksek → Düşük)</option>
+			<option value="stock_asc">Stok (Düşük → Yüksek)</option>
+		</select>
+	</div>
+</div>
+<div class="flex flex-col md:flex-row gap-6">
+	<aside class="md:w-72 space-y-4">
+		<div class="flex gap-2">
+			<div id="search-wrapper" class="relative flex-1">
+				<input id="q" class="w-full px-3 py-2 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800" placeholder="Kitap adı ara..." autocomplete="off" />
+				<div id="suggestions" class="hidden absolute left-0 right-0 mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-60 overflow-y-auto z-10"></div>
+			</div>
+			<button id="searchBtn" class="px-4 py-2 rounded bg-blue-600 text-white">Ara</button>
+		</div>
+		<div>
+			<label class="text-sm font-semibold mb-1 block">Yazar</label>
+			<select id="filter-author" class="w-full px-3 py-2 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800">
+				<option value="">Tümü</option>
+			</select>
+		</div>
+		<div>
+			<label class="text-sm font-semibold mb-2 block">Ortalama Yıldız</label>
+			<div id="filter-rating-stars" class="flex gap-1">
+				<button type="button" data-value="1" class="star-filter text-2xl text-gray-300 hover:text-yellow-400">★</button>
+				<button type="button" data-value="2" class="star-filter text-2xl text-gray-300 hover:text-yellow-400">★</button>
+				<button type="button" data-value="3" class="star-filter text-2xl text-gray-300 hover:text-yellow-400">★</button>
+				<button type="button" data-value="4" class="star-filter text-2xl text-gray-300 hover:text-yellow-400">★</button>
+				<button type="button" data-value="5" class="star-filter text-2xl text-gray-300 hover:text-yellow-400">★</button>
+			</div>
+			<button id="rating-clear" type="button" class="mt-1 text-xs text-blue-600 hover:underline">Temizle</button>
+		</div>
+		<div>
+			<label class="text-sm font-semibold mb-2 block">Kategoriler</label>
+			<div id="filter-categories" class="flex flex-col gap-2 max-h-60 overflow-y-auto border border-gray-200 dark:border-gray-700 rounded-lg p-3 bg-white dark:bg-gray-900"></div>
+		</div>
+		<label class="flex items-center gap-2 text-sm">
+			<input type="checkbox" id="filter-instock" class="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500" />
+			<span>Stokta olanları göster</span>
+		</label>
+	</aside>
+	<section class="flex-1">
+		<div class="grid gap-4 grid-cols-1 md:grid-cols-3" id="books"></div>
+		<div id="pagination" class="mt-6 flex flex-wrap items-center justify-center gap-2"></div>
+		<article id="book-detail" class="mt-8 hidden"></article>
+	</section>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+const FALLBACK_IMAGE = "{% static 'images/library-hero.webp' %}";
+
+function stars(n){
+	const value = Math.round(Number(n) || 0);
+	const filled = Math.max(0, Math.min(5, value));
+	return '★'.repeat(filled) + '☆'.repeat(5 - filled);
+}
+
+async function loadBooks() {
+    try{
+    const params = buildQueryParams();
+    const url = params ? `/api/books/?${params}` : '/api/books/';
+    const res = await window.libmApi(url, { silent401: true });
+    if(!res.ok){ throw new Error('Liste alınamadı'); }
+    const data = await res.json();
+	const books = Array.isArray(data.results) ? data.results : data;
+	const container = document.getElementById('books');
+	if (!books.length) {
+		container.innerHTML = '<p class="text-gray-500 dark:text-gray-400">Uygun kitap bulunamadı.</p>';
+		document.getElementById('pagination').innerHTML = '';
+		return;
+	}
+	container.innerHTML = books.map(b => {
+		const coverUrl = b.cover_image || FALLBACK_IMAGE;
+		const stockText = (typeof b.stock !== 'undefined' && b.stock > 0) ? 'Stokta var' : 'Stok tükendi';
+		return `
+		<a href="/books/${b.id}/" class="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 hover:shadow-lg transition flex flex-col gap-3 overflow-hidden h-full">
+			<div class="aspect-[2/3] bg-white dark:bg-gray-950 overflow-hidden flex items-center justify-center p-3">
+				<img src="${coverUrl}" alt="${b.title}" class="max-w-full max-h-full object-contain" loading="lazy" decoding="async" onerror="this.onerror=null;this.src='${FALLBACK_IMAGE}'" />
+			</div>
+			<div class="p-4 flex flex-col gap-3 flex-1">
+				<h3 class="font-semibold text-lg leading-snug line-clamp-2 min-h-[3.25rem]">${b.title}</h3>
+				<div class="mt-auto flex items-center justify-between text-sm pt-1">
+					<span class="text-yellow-500">${stars(b.average_rating)}</span>
+					<span class="font-medium ${stockText === 'Stokta var' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}">${stockText}</span>
+				</div>
+			</div>
+		</a>
+		`;
+	}).join('');
+	renderPagination(data.page || currentFilters.page || 1, data.total_pages || 1);
+    }catch(e){ console.error(e); window.showToast('Kitaplar yüklenemedi', 'error'); }
+}
+
+function renderPagination(page, totalPages){
+	const container = document.getElementById('pagination');
+	if(!container) return;
+	if(!totalPages || totalPages <= 1){
+		container.innerHTML = '';
+		currentFilters.page = page;
+		return;
+	}
+	currentFilters.page = page;
+	let html = '';
+	if(page > 1){
+		html += `<button data-page="${page - 1}" class="px-3 py-1 rounded border border-gray-300 dark:border-gray-700 text-sm hover:bg-gray-100 dark:hover:bg-gray-800">Önceki</button>`;
+	}
+	for(let p = 1; p <= totalPages; p++){
+		const active = p === page;
+		html += `<button data-page="${p}" class="px-3 py-1 rounded text-sm ${active ? 'bg-blue-600 text-white' : 'border border-gray-300 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800'}">${p}</button>`;
+	}
+	if(page < totalPages){
+		html += `<button data-page="${page + 1}" class="px-3 py-1 rounded border border-gray-300 dark:border-gray-700 text-sm hover:bg-gray-100 dark:hover:bg-gray-800">Sonraki</button>`;
+	}
+	container.innerHTML = html;
+	container.querySelectorAll('button[data-page]').forEach(btn => {
+		btn.addEventListener('click', () => {
+			const target = Number(btn.dataset.page);
+			if(!Number.isNaN(target) && target !== currentFilters.page){
+				currentFilters.page = target;
+				loadBooks();
+			}
+		});
+	});
+}
+
+
+const searchBtn = document.getElementById('searchBtn');
+const q = document.getElementById('q');
+const suggestionsBox = document.getElementById('suggestions');
+const searchWrapper = document.getElementById('search-wrapper');
+const authorSelect = document.getElementById('filter-author');
+const categoriesWrapper = document.getElementById('filter-categories');
+const ratingStarsContainer = document.getElementById('filter-rating-stars');
+const ratingClearBtn = document.getElementById('rating-clear');
+const inStockCheckbox = document.getElementById('filter-instock');
+const sortSelect = document.getElementById('sort-select');
+let suggestionTimer = null;
+let currentFilters = { search:'', author:'', rating:'', categories:[], in_stock:false, page:1, sort: sortSelect ? sortSelect.value : 'title_asc' };
+
+function hideSuggestions(){
+	suggestionsBox.classList.add('hidden');
+	suggestionsBox.innerHTML = '';
+}
+
+async function fetchSuggestions(term){
+	if(!term){
+		hideSuggestions();
+		return;
+	}
+	try{
+		const res = await window.libmApi(`/api/books/suggest/?q=${encodeURIComponent(term)}`, { silent401: true });
+		if(!res.ok){ hideSuggestions(); return; }
+		const data = await res.json();
+		if(!data.length){ hideSuggestions(); return; }
+		suggestionsBox.innerHTML = data.map(item => `
+			<button type="button" class="w-full text-left px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-800" data-title="${item.title}">
+				<span>${item.title}</span>
+			</button>
+		`).join('');
+		suggestionsBox.classList.remove('hidden');
+	}catch(e){
+		hideSuggestions();
+	}
+}
+
+function buildQueryParams(){
+	const params = new URLSearchParams();
+	if(currentFilters.search){
+		params.append('q', currentFilters.search);
+	}
+	if(currentFilters.author){
+		params.append('author', currentFilters.author);
+	}
+	if(currentFilters.rating){
+		params.append('min_rating', currentFilters.rating);
+	}
+	if(currentFilters.categories.length){
+		params.append('categories', currentFilters.categories.join(','));
+	}
+	if(currentFilters.in_stock){
+		params.append('in_stock', '1');
+	}
+	if(currentFilters.sort){
+		params.append('sort', currentFilters.sort);
+	}
+	if(currentFilters.page && currentFilters.page > 1){
+		params.append('page', currentFilters.page);
+	}
+	return params.toString();
+}
+
+searchBtn.addEventListener('click', () => {
+	hideSuggestions();
+	currentFilters.search = q.value.trim();
+	currentFilters.page = 1;
+	loadBooks();
+});
+
+q.addEventListener('keyup', (e)=>{ if(e.key==='Enter'){ hideSuggestions(); currentFilters.search = q.value.trim(); currentFilters.page = 1; loadBooks(); }});
+
+q.addEventListener('input', () => {
+	const term = q.value.trim();
+	currentFilters.search = term;
+	if(suggestionTimer) clearTimeout(suggestionTimer);
+	if(!term){
+		hideSuggestions();
+		currentFilters.page = 1;
+		loadBooks();
+		return;
+	}
+	suggestionTimer = setTimeout(()=> fetchSuggestions(term), 200);
+});
+
+suggestionsBox.addEventListener('click', (e) => {
+	const btn = e.target.closest('button[data-title]');
+	if(!btn) return;
+	q.value = btn.dataset.title;
+	hideSuggestions();
+	currentFilters.search = q.value.trim();
+	currentFilters.page = 1;
+	loadBooks();
+});
+
+authorSelect.addEventListener('change', () => {
+	currentFilters.author = authorSelect.value;
+	currentFilters.page = 1;
+	loadBooks();
+});
+
+function updateRatingStarUI(){
+	if(!ratingStarsContainer) return;
+	const selected = Number(currentFilters.rating) || 0;
+	ratingStarsContainer.querySelectorAll('.star-filter').forEach(btn => {
+		const value = Number(btn.dataset.value);
+		if(selected && value <= selected){
+			btn.classList.add('text-yellow-400');
+			btn.classList.remove('text-gray-300');
+		}else{
+			btn.classList.remove('text-yellow-400');
+			btn.classList.add('text-gray-300');
+		}
+	});
+}
+
+if(ratingStarsContainer){
+	ratingStarsContainer.addEventListener('click', (e) => {
+		const btn = e.target.closest('.star-filter');
+		if(!btn) return;
+		const value = Number(btn.dataset.value);
+		if(!value) return;
+		if(Number(currentFilters.rating) === value){
+			currentFilters.rating = '';
+		}else{
+			currentFilters.rating = value;
+		}
+		currentFilters.page = 1;
+		updateRatingStarUI();
+		loadBooks();
+	});
+	ratingStarsContainer.addEventListener('mouseover', (e) => {
+		const btn = e.target.closest('.star-filter');
+		if(!btn) return;
+		const value = Number(btn.dataset.value) || 0;
+		ratingStarsContainer.querySelectorAll('.star-filter').forEach(star => {
+			const v = Number(star.dataset.value);
+			if(v <= value){
+				star.classList.add('text-yellow-400');
+				star.classList.remove('text-gray-300');
+			}else{
+				star.classList.remove('text-yellow-400');
+				star.classList.add('text-gray-300');
+			}
+		});
+	});
+	ratingStarsContainer.addEventListener('mouseleave', () => {
+		updateRatingStarUI();
+	});
+	updateRatingStarUI();
+}
+
+if(ratingClearBtn){
+	ratingClearBtn.addEventListener('click', () => {
+		currentFilters.rating = '';
+		currentFilters.page = 1;
+		updateRatingStarUI();
+		loadBooks();
+	});
+}
+
+categoriesWrapper.addEventListener('change', () => {
+	const selected = Array.from(categoriesWrapper.querySelectorAll('input[type="checkbox"]:checked')).map(cb => cb.value);
+	currentFilters.categories = selected;
+	currentFilters.page = 1;
+	loadBooks();
+});
+
+if(inStockCheckbox){
+	inStockCheckbox.addEventListener('change', () => {
+		currentFilters.in_stock = inStockCheckbox.checked;
+		currentFilters.page = 1;
+		loadBooks();
+	});
+}
+
+if(sortSelect){
+	sortSelect.addEventListener('change', () => {
+		currentFilters.sort = sortSelect.value;
+		currentFilters.page = 1;
+		loadBooks();
+	});
+}
+
+document.addEventListener('click', (e) => {
+	if(!searchWrapper.contains(e.target)){
+		hideSuggestions();
+	}
+});
+
+async function populateFilters(){
+	try{
+		const res = await window.libmApi('/api/books/filters/', { silent401: true });
+		if(!res.ok) return;
+		const data = await res.json();
+		if(Array.isArray(data.authors)){
+			data.authors.forEach(author => {
+				const opt = document.createElement('option');
+				opt.value = author;
+				opt.textContent = author;
+				authorSelect.appendChild(opt);
+			});
+		}
+		if(Array.isArray(data.categories)){
+			categoriesWrapper.innerHTML = data.categories.map(cat => `
+				<label class="flex items-center gap-2 text-sm">
+					<input type="checkbox" value="${cat}" class="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500" />
+					<span>${cat}</span>
+				</label>
+			`).join('') || '<p class="text-xs text-gray-500">Kategori bulunamadı.</p>';
+		}
+	}catch(e){
+		console.error(e);
+	}
+}
+
+populateFilters();
+loadBooks();
+</script>
+{% endblock %}

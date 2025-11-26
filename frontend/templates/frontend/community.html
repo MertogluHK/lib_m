@@ -1,0 +1,603 @@
+{% extends 'frontend/base.html' %}
+{% block title %}Topluluk{% endblock %}
+{% block content %}
+<section id="community-main" class="flex flex-col gap-8">
+	<article class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6 shadow-sm">
+		<header class="mb-4">
+			<h2 class="text-2xl font-semibold">Fikirlerin bizim için önemli</h2>
+		</header>
+		<form id="post-form" class="space-y-3">
+			<label class="text-sm font-semibold block">
+				<span>Kitap Seç</span>
+				<div class="relative mt-1">
+					<input type="text" id="post-book-input" name="book_title" placeholder="Kitap ara..." autocomplete="off" class="w-full px-4 py-2 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800" />
+					<input type="hidden" name="book" id="post-book-id" />
+					<div id="post-book-suggestions" class="hidden absolute left-0 right-0 mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-60 overflow-y-auto z-20"></div>
+				</div>
+			</label>
+			<textarea name="content" rows="1" placeholder="Fikirlerin..." class="w-full px-4 py-2 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 placeholder:text-gray-400 resize-none overflow-hidden" required></textarea>
+			<div class="flex items-center justify-between">
+				<div class="flex items-center gap-1" id="post-rating-stars">
+					<button type="button" class="post-star-btn text-2xl text-gray-300 hover:text-yellow-400 transition-colors" data-rating="1">★</button>
+					<button type="button" class="post-star-btn text-2xl text-gray-300 hover:text-yellow-400 transition-colors" data-rating="2">★</button>
+					<button type="button" class="post-star-btn text-2xl text-gray-300 hover:text-yellow-400 transition-colors" data-rating="3">★</button>
+					<button type="button" class="post-star-btn text-2xl text-gray-300 hover:text-yellow-400 transition-colors" data-rating="4">★</button>
+					<button type="button" class="post-star-btn text-2xl text-gray-300 hover:text-yellow-400 transition-colors" data-rating="5">★</button>
+				</div>
+				<input type="hidden" name="rating" id="post-rating-value" value="">
+				<button type="submit" class="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700">Paylaş</button>
+			</div>
+		</form>
+	</article>
+	<section class="space-y-4">
+		<div id="posts-list" class="grid gap-4">
+			<!-- Posts will be loaded here -->
+		</div>
+	</section>
+	</section>
+
+<!-- Post Detail View (hidden by default) -->
+<section id="post-detail" class="hidden flex flex-col gap-6">
+	<button id="back-btn" class="self-start px-4 py-2 rounded border border-gray-300 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800">← Geri</button>
+	<article id="post-detail-content" class="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6">
+		<!-- Post content will be loaded here -->
+	</article>
+	<section class="space-y-4">
+		<h3 class="text-xl font-semibold">Yorumlar</h3>
+		<form id="comment-form" class="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4">
+			<textarea name="content" rows="2" placeholder="Yorumunuzu yazın..." required class="w-full px-4 py-2 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800"></textarea>
+			<button type="submit" class="mt-2 px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700">Yorum Yap</button>
+		</form>
+		<div id="comments-list" class="space-y-3">
+			<!-- Comments will be loaded here -->
+		</div>
+	</section>
+</section>
+
+<div id="login-required-modal" class="hidden fixed inset-0 z-40 bg-black/50 backdrop-blur flex items-center justify-center px-4">
+	<div class="bg-white dark:bg-gray-900 rounded-2xl p-6 max-w-md w-full text-center space-y-4 border border-gray-200 dark:border-gray-800 shadow-2xl">
+		<h3 class="text-xl font-semibold">Profil bölümüne erişmek için giriş yapın</h3>
+		<p class="text-gray-600 dark:text-gray-300">Profil sekmesi yalnızca oturum açmış kullanıcılar için kullanılabilir.</p>
+		<div class="flex flex-col sm:flex-row gap-3 justify-center">
+			<a href="/login/" class="flex-1 px-4 py-3 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700">Giriş Ekranına Git</a>
+			<button id="login-required-close" type="button" class="flex-1 px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800">Kapat</button>
+		</div>
+	</div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+let currentPostId = null;
+
+// Auto-resize textarea
+const postTextarea = document.querySelector('#post-form textarea[name="content"]');
+postTextarea.addEventListener('input', function() {
+	this.style.height = 'auto';
+	this.style.height = (this.scrollHeight) + 'px';
+});
+const postBookInput = document.getElementById('post-book-input');
+const postBookIdInput = document.getElementById('post-book-id');
+const postBookSuggestions = document.getElementById('post-book-suggestions');
+let postBookSuggestionTimer = null;
+
+function hideBookSuggestions(){
+	if(postBookSuggestions){
+		postBookSuggestions.classList.add('hidden');
+		postBookSuggestions.innerHTML = '';
+	}
+}
+
+async function fetchBookSuggestions(term){
+	if(!postBookSuggestions) return;
+	if(!term){
+		hideBookSuggestions();
+		return;
+	}
+	try{
+		const res = await window.libmApi(`/api/books/suggest/?q=${encodeURIComponent(term)}`, { silent401: true });
+		if(!res.ok){
+			postBookSuggestions.innerHTML = `<div class="px-3 py-2 text-sm text-gray-500 dark:text-gray-400">Uygun kitap bulunamadı.</div>`;
+			postBookSuggestions.classList.remove('hidden');
+			return;
+		}
+		const data = await res.json();
+		if(!data.length){
+			postBookSuggestions.innerHTML = `<div class="px-3 py-2 text-sm text-gray-500 dark:text-gray-400">Uygun kitap bulunamadı.</div>`;
+			postBookSuggestions.classList.remove('hidden');
+			return;
+		}
+		postBookSuggestions.innerHTML = data.map(item => `
+			<button type="button" class="w-full text-left px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-800" data-id="${item.id}" data-title="${item.title}">
+				<span class="block font-medium">${item.title}</span>
+				<span class="text-xs text-gray-500">${item.author || ''}</span>
+			</button>
+		`).join('');
+		postBookSuggestions.classList.remove('hidden');
+	}catch(err){
+		hideBookSuggestions();
+	}
+}
+
+if(postBookInput){
+	postBookInput.addEventListener('input', () => {
+		postBookIdInput.value = '';
+		const term = postBookInput.value.trim();
+		if(postBookSuggestionTimer) clearTimeout(postBookSuggestionTimer);
+		if(!term){
+			hideBookSuggestions();
+			return;
+		}
+		postBookSuggestionTimer = setTimeout(()=> fetchBookSuggestions(term), 200);
+	});
+}
+
+if(postBookSuggestions){
+	postBookSuggestions.addEventListener('click', (e) => {
+		const btn = e.target.closest('button[data-id]');
+		if(!btn) return;
+		postBookIdInput.value = btn.dataset.id;
+		postBookInput.value = btn.dataset.title;
+		hideBookSuggestions();
+	});
+	document.addEventListener('click', (e) => {
+		if(!postBookSuggestions.contains(e.target) && e.target !== postBookInput){
+			hideBookSuggestions();
+		}
+	});
+}
+
+// Format time ago
+function timeAgo(dateString) {
+	const now = new Date();
+	const past = new Date(dateString);
+	const diffMs = now - past;
+	const diffMins = Math.floor(diffMs / 60000);
+	const diffHours = Math.floor(diffMs / 3600000);
+	const diffDays = Math.floor(diffMs / 86400000);
+	
+	if (diffMins < 1) return 'Az önce';
+	if (diffMins < 60) return `${diffMins} dakika önce`;
+	if (diffHours < 24) return `${diffHours} saat önce`;
+	if (diffDays < 7) return `${diffDays} gün önce`;
+	return past.toLocaleDateString('tr-TR');
+}
+
+// Load posts list
+async function loadPosts() {
+	const res = await window.libmApi('/api/community/posts/', { silent401: true });
+	const list = document.getElementById('posts-list');
+	if (!res.ok) {
+		list.innerHTML = '<p class="text-gray-500 dark:text-gray-400">Henüz paylaşım yok.</p>';
+		return;
+	}
+	const data = await res.json();
+	if (data.length === 0) {
+		list.innerHTML = '<p class="text-gray-500 dark:text-gray-400">Henüz paylaşım yok.</p>';
+		return;
+	}
+	const hasToken = !!localStorage.getItem('access');
+	const currentUser = hasToken ? await getCurrentUsername() : null;
+	
+	list.innerHTML = data.map(post => {
+		let ratingDisplay = '';
+		if (post.rating) {
+			const filledStars = '★'.repeat(post.rating);
+			const emptyStars = '☆'.repeat(5 - post.rating);
+			ratingDisplay = `<span class="text-yellow-400 text-sm ml-2">${filledStars}${emptyStars}</span>`;
+		}
+		const isOwner = currentUser && post.user_username === currentUser;
+		const deleteBtn = isOwner ? `<button onclick="event.stopPropagation(); deletePost(${post.id})" class="text-red-600 hover:text-red-700 text-sm">Sil</button>` : '';
+		const bookTitle = post.book_title || 'Kitap adı yok';
+		return `
+		<article class="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4 cursor-pointer hover:shadow-md transition-shadow" onclick="showPostDetail(${post.id})">
+			<div class="flex items-start justify-between">
+				<div class="flex-1">
+					<div class="flex items-center flex-wrap gap-2">
+						<span class="text-lg font-semibold mb-1 text-blue-800 dark:text-blue-400">${bookTitle}</span>
+						${ratingDisplay}
+					</div>
+					<p class="text-sm text-gray-600 dark:text-gray-400 mb-1">${post.user_username || 'Anonim'}</p>
+					<p class="text-xs text-gray-500">${post.comment_count || 0} yorum</p>
+				</div>
+				<div class="flex flex-col items-end gap-2">
+					${deleteBtn}
+					<span class="text-xs text-gray-500">${timeAgo(post.created_at)}</span>
+				</div>
+			</div>
+		</article>
+		`;
+	}).join('');
+}
+
+async function getCurrentUsername() {
+	try {
+		const res = await window.libmApi('/api/users/me/', { silent401: true });
+		if (res.ok) {
+			const data = await res.json();
+			return data.username;
+		}
+	} catch(e) {}
+	return null;
+}
+
+// Load my posts
+async function loadMyPosts() {
+	const res = await window.libmApi('/api/community/posts/my_posts/', { silent401: true });
+	const list = document.getElementById('my-posts-list');
+	if (!res.ok) {
+		list.innerHTML = '<p class="text-gray-500 dark:text-gray-400">Konuşmalarınız yüklenemedi.</p>';
+		return;
+	}
+	const data = await res.json();
+	if (data.length === 0) {
+		list.innerHTML = '<p class="text-gray-500 dark:text-gray-400">Henüz konuşma başlatmadınız.</p>';
+		return;
+	}
+	list.innerHTML = data.map(post => {
+		let ratingDisplay = '';
+		if (post.rating) {
+			const filledStars = '★'.repeat(post.rating);
+			const emptyStars = '☆'.repeat(5 - post.rating);
+			ratingDisplay = `<span class="text-yellow-400 text-sm ml-2">${filledStars}${emptyStars}</span>`;
+		}
+		const bookTitle = post.book_title || 'Kitap adı yok';
+		const bookLink = post.book_id ? `/books/${post.book_id}/` : null;
+		const titleMarkup = bookLink
+			? `<a href="${bookLink}" class="text-lg font-semibold mb-1 text-blue-800 dark:text-blue-400 underline">${bookTitle}</a>`
+			: `<span class="text-lg font-semibold mb-1 text-blue-800 dark:text-blue-400">${bookTitle}</span>`;
+		return `
+		<article class="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4">
+			<div class="flex items-start justify-between">
+				<div class="flex-1">
+					<div class="flex items-center gap-2 flex-wrap">
+						${titleMarkup}
+						${ratingDisplay}
+					</div>
+					<p class="text-sm text-gray-600 dark:text-gray-400 mb-1">${post.user_username || 'Anonim'}</p>
+					<p class="text-xs text-gray-500 mb-2">${post.comment_count || 0} yorum</p>
+					<p class="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">${post.content || ''}</p>
+				</div>
+				<div class="flex flex-col items-end gap-2 ml-4">
+					<button onclick="deletePost(${post.id})" class="text-red-600 hover:text-red-700 text-sm">Sil</button>
+					<span class="text-xs text-gray-500">${timeAgo(post.created_at)}</span>
+				</div>
+			</div>
+		</article>
+		`;
+	}).join('');
+}
+
+// Load my comments
+async function loadMyComments() {
+	const res = await window.libmApi('/api/community/posts/my_comments/', { silent401: true });
+	const list = document.getElementById('my-comments-list');
+	if (!res.ok) {
+		list.innerHTML = '<p class="text-gray-500 dark:text-gray-400">Yorumlarınız yüklenemedi.</p>';
+		return;
+	}
+	const data = await res.json();
+	if (data.length === 0) {
+		list.innerHTML = '<p class="text-gray-500 dark:text-gray-400">Henüz yorum yapmadınız.</p>';
+		return;
+	}
+	list.innerHTML = data.map(comment => `
+		<article class="rounded-lg border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800 p-3">
+			<header class="flex items-center justify-between mb-2">
+				<div>
+					<p class="font-semibold text-sm">${comment.post_book_title || 'Kitap adı yok'}</p>
+					<p class="text-xs text-gray-500">${timeAgo(comment.created_at)}</p>
+				</div>
+			</header>
+			<p class="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">${comment.content || ''}</p>
+		</article>
+	`).join('');
+}
+
+// Delete post
+async function deletePost(postId) {
+	if (!confirm('Bu konuşmayı silmek istediğinize emin misiniz?')) return;
+	
+	const res = await window.libmApi(`/api/community/posts/${postId}/`, {
+		method: 'DELETE'
+	});
+	
+	if (res.ok) {
+		window.showToast('Konuşma başarıyla silindi', 'success');
+		loadPosts();
+		// If we're viewing the deleted post, go back to main view
+		if (currentPostId === postId) {
+			document.getElementById('post-detail').classList.add('hidden');
+			document.getElementById('community-main').classList.remove('hidden');
+			currentPostId = null;
+		}
+	} else {
+		window.showToast('Konuşma silinemedi', 'error');
+	}
+}
+
+// Show post detail
+async function showPostDetail(postId) {
+	currentPostId = postId;
+	document.getElementById('community-main').classList.add('hidden');
+	document.getElementById('post-detail').classList.remove('hidden');
+	
+	const res = await window.libmApi(`/api/community/posts/${postId}/`, { silent401: true });
+	if (!res.ok) {
+		window.showToast('Paylaşım yüklenemedi', 'error');
+		return;
+	}
+	const post = await res.json();
+	
+	let ratingDisplay = '';
+	if (post.rating) {
+		const filledStars = '★'.repeat(post.rating);
+		const emptyStars = '☆'.repeat(5 - post.rating);
+		ratingDisplay = `<span class="text-yellow-400 text-sm ml-2">${filledStars}${emptyStars}</span>`;
+	}
+	const bookTitle = post.book_title || 'Kitap adı yok';
+	const bookLink = post.book_id ? `/books/${post.book_id}/` : null;
+	const titleMarkup = bookLink
+		? `<a href="${bookLink}" class="text-lg font-semibold mb-1 text-blue-800 dark:text-blue-400 underline">${bookTitle}</a>`
+		: `<span class="text-lg font-semibold mb-1 text-blue-800 dark:text-blue-400">${bookTitle}</span>`;
+	document.getElementById('post-detail-content').innerHTML = `
+		<div class="flex items-start justify-between mb-4">
+			<div class="flex-1">
+				<div class="flex items-center gap-2 flex-wrap">
+					${titleMarkup}
+					${ratingDisplay}
+				</div>
+				<p class="text-sm text-gray-600 dark:text-gray-400 mb-1">${post.user_username || 'Anonim'}</p>
+			</div>
+			<span class="text-xs text-gray-500 ml-4">${timeAgo(post.created_at)}</span>
+		</div>
+		<p class="text-gray-700 dark:text-gray-300 whitespace-pre-wrap">${post.content || ''}</p>
+	`;
+	
+	loadComments(postId);
+}
+
+// Load comments
+async function loadComments(postId) {
+	const res = await window.libmApi(`/api/community/posts/${postId}/comments/`, { silent401: true });
+	const list = document.getElementById('comments-list');
+	if (!res.ok) {
+		list.innerHTML = '<p class="text-gray-500 dark:text-gray-400">Yorumlar yüklenemedi.</p>';
+		return;
+	}
+	const data = await res.json();
+	if (data.length === 0) {
+		list.innerHTML = '<p class="text-gray-500 dark:text-gray-400">Henüz yorum yok.</p>';
+		return;
+	}
+	const hasToken = !!localStorage.getItem('access');
+	const currentUser = hasToken ? await getCurrentUsername() : null;
+	
+	list.innerHTML = data.map(comment => {
+		const isOwner = currentUser && comment.user_username === currentUser;
+		const escapedContent = (comment.content || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\n/g, '\\n').replace(/\r/g, '');
+		const editDeleteBtns = isOwner ? `
+			<div class="flex gap-2 mt-2">
+				<button onclick="editComment(${postId}, ${comment.id}, '${escapedContent}')" class="text-xs px-2 py-1 rounded border border-blue-300 dark:border-blue-700 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900">Düzenle</button>
+				<button onclick="deleteComment(${postId}, ${comment.id})" class="text-xs px-2 py-1 rounded border border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900">Sil</button>
+			</div>
+		` : '';
+		return `
+		<article class="rounded-lg border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800 p-3" id="comment-${comment.id}">
+			<header class="flex items-center justify-between mb-2">
+				<div class="flex items-center gap-2">
+					<span class="font-semibold text-sm">${comment.user_username || 'Anonim'}</span>
+					<span class="text-xs text-gray-500">${timeAgo(comment.created_at)}</span>
+				</div>
+			</header>
+			<p class="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap" id="comment-content-${comment.id}">${comment.content || ''}</p>
+			${editDeleteBtns}
+		</article>
+		`;
+	}).join('');
+}
+
+// Delete comment
+async function deleteComment(postId, commentId) {
+	if (!confirm('Bu yorumu silmek istediğinize emin misiniz?')) return;
+	
+	const res = await window.libmApi(`/api/community/posts/${postId}/comments/${commentId}/`, {
+		method: 'DELETE'
+	});
+	
+	if (res.ok) {
+		window.showToast('Yorum başarıyla silindi', 'success');
+		loadComments(postId);
+		loadPosts();
+	} else {
+		window.showToast('Yorum silinemedi', 'error');
+	}
+}
+
+// Edit comment
+let editingCommentId = null;
+async function editComment(postId, commentId, currentContent) {
+	if (editingCommentId === commentId) {
+		// Cancel edit
+		editingCommentId = null;
+		loadComments(postId);
+		return;
+	}
+	
+	const contentEl = document.getElementById(`comment-content-${commentId}`);
+	const unescapedContent = currentContent.replace(/\\n/g, '\n').replace(/\\'/g, "'").replace(/\\\\/g, '\\');
+	
+	// Create edit form
+	const editForm = `
+		<form id="edit-comment-form-${commentId}" class="space-y-2">
+			<textarea id="edit-comment-text-${commentId}" rows="3" class="w-full px-3 py-2 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800" required>${unescapedContent}</textarea>
+			<div class="flex gap-2">
+				<button type="submit" class="text-xs px-3 py-1 rounded bg-blue-600 text-white hover:bg-blue-700">Kaydet</button>
+				<button type="button" onclick="editComment(${postId}, ${commentId}, '${currentContent}')" class="text-xs px-3 py-1 rounded border border-gray-300 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800">İptal</button>
+			</div>
+		</form>
+	`;
+	
+	contentEl.innerHTML = editForm;
+	editingCommentId = commentId;
+	
+	// Handle form submission
+	const form = document.getElementById(`edit-comment-form-${commentId}`);
+	if (form) {
+		form.addEventListener('submit', async (e) => {
+			e.preventDefault();
+			const newContent = document.getElementById(`edit-comment-text-${commentId}`).value.trim();
+			if (!newContent) {
+				window.showToast('Yorum boş olamaz', 'error');
+				return;
+			}
+			
+			const res = await window.libmApi(`/api/community/posts/${postId}/comments/${commentId}/`, {
+				method: 'PATCH',
+				body: JSON.stringify({ content: newContent })
+			});
+			
+			if (res.ok) {
+				window.showToast('Yorum başarıyla güncellendi', 'success');
+				editingCommentId = null;
+				loadComments(postId);
+				loadPosts();
+			} else {
+				const data = await res.json();
+				window.showToast(data.detail || 'Yorum güncellenemedi', 'error');
+			}
+		});
+	}
+}
+
+// Back button
+document.getElementById('back-btn').addEventListener('click', () => {
+	document.getElementById('post-detail').classList.add('hidden');
+	document.getElementById('community-main').classList.remove('hidden');
+	currentPostId = null;
+	editingCommentId = null;
+});
+
+// Post star rating functionality
+let postSelectedRating = 0;
+const postStarButtons = document.querySelectorAll('.post-star-btn');
+const postRatingValueInput = document.getElementById('post-rating-value');
+
+postStarButtons.forEach((btn, index) => {
+	btn.addEventListener('click', () => {
+		postSelectedRating = index + 1;
+		postRatingValueInput.value = postSelectedRating;
+		updatePostStarDisplay();
+	});
+	
+	btn.addEventListener('mouseenter', () => {
+		highlightPostStars(index + 1);
+	});
+});
+
+document.getElementById('post-rating-stars').addEventListener('mouseleave', () => {
+	updatePostStarDisplay();
+});
+
+function highlightPostStars(count) {
+	postStarButtons.forEach((btn, index) => {
+		if (index < count) {
+			btn.classList.remove('text-gray-300');
+			btn.classList.add('text-yellow-400');
+		} else {
+			btn.classList.remove('text-yellow-400');
+			btn.classList.add('text-gray-300');
+		}
+	});
+}
+
+function updatePostStarDisplay() {
+	highlightPostStars(postSelectedRating);
+}
+
+// Post form
+document.getElementById('post-form').addEventListener('submit', async (e) => {
+	e.preventDefault();
+	const form = e.target;
+	const formData = new FormData(form);
+	const selectedBookId = Number(formData.get('book'));
+	if(!selectedBookId){
+		window.showToast('Lütfen listeden bir kitap seçin', 'error');
+		return;
+	}
+	const payload = {
+		book: selectedBookId,
+		book_title: formData.get('book_title'),
+		content: formData.get('content')
+	};
+	
+	const rating = formData.get('rating');
+	if (rating) {
+		payload.rating = parseInt(rating);
+	}
+	
+	const res = await window.libmApi('/api/community/posts/', {
+		method: 'POST',
+		body: JSON.stringify(payload),
+		silent401: true
+	});
+	
+	if (res.ok) {
+		window.showToast('Paylaşım başarıyla oluşturuldu', 'success');
+		form.reset();
+		postTextarea.style.height = 'auto';
+		if(postBookIdInput){ postBookIdInput.value = ''; }
+		if(postBookInput){ postBookInput.value = ''; }
+		hideBookSuggestions();
+		postSelectedRating = 0;
+		postRatingValueInput.value = '';
+		updatePostStarDisplay();
+		loadPosts();
+	} else {
+		const data = await res.json();
+		window.showToast(data.detail || 'Paylaşım oluşturulamadı', 'error');
+	}
+});
+
+// Comment form
+document.getElementById('comment-form').addEventListener('submit', async (e) => {
+	e.preventDefault();
+	if (!currentPostId) return;
+	
+	const form = e.target;
+	const formData = new FormData(form);
+	const payload = {
+		content: formData.get('content')
+	};
+	
+	const res = await window.libmApi(`/api/community/posts/${currentPostId}/comments/`, {
+		method: 'POST',
+		body: JSON.stringify(payload)
+	});
+	
+	if (res.ok) {
+		window.showToast('Yorum başarıyla eklendi', 'success');
+		form.reset();
+		loadComments(currentPostId);
+		loadPosts();
+		loadMyComments();
+	} else {
+		const data = await res.json();
+		window.showToast(data.detail || 'Yorum eklenemedi', 'error');
+	}
+});
+
+// Load posts on page load
+loadPosts();
+
+// Check for hash in URL to open specific post
+window.addEventListener('load', () => {
+	const hash = window.location.hash;
+	if (hash && hash.startsWith('#post-')) {
+		const postId = parseInt(hash.replace('#post-', ''));
+		if (postId) {
+			setTimeout(() => showPostDetail(postId), 100);
+		}
+	}
+});
+</script>
+{% endblock %}

@@ -1,0 +1,149 @@
+{% extends 'frontend/base.html' %}
+{% block title %}Ödeme{% endblock %}
+{% block content %}
+<section class="max-w-lg mx-auto">
+	<article class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6 shadow-sm">
+		<header class="mb-6 text-center">
+			<h2 class="text-2xl font-semibold">Ödeme</h2>
+			<p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Depozito tutarı: <strong>50 TL</strong></p>
+		</header>
+		<form id="pay-form" class="space-y-4">
+			<input type="hidden" name="q" />
+			<input type="hidden" name="d" />
+			<label class="block">
+				<span class="text-sm font-medium">Kart Üzerindeki İsim</span>
+				<input name="card_name" pattern="^[A-Za-zÇĞİÖŞÜçğıöşü\s]+$" required class="mt-1 w-full px-3 py-2 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800" />
+			</label>
+			<label class="block">
+				<span class="text-sm font-medium">Kart Numarası</span>
+				<input name="card_number" inputmode="numeric" pattern="^(?:\d{4} ){3}\d{4}$" maxlength="19" placeholder="1234 5678 9012 3456" required class="mt-1 w-full px-3 py-2 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800" />
+			</label>
+			<div class="grid grid-cols-2 gap-3">
+				<label class="block">
+					<span class="text-sm font-medium">SKT (AA/YY)</span>
+					<input name="exp" inputmode="numeric" maxlength="5" pattern="^(0[1-9]|1[0-2])\/\d{2}$" placeholder="MM/YY" required class="mt-1 w-full px-3 py-2 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800" />
+				</label>
+				<label class="block">
+					<span class="text-sm font-medium">CVV</span>
+					<input name="cvv" inputmode="numeric" maxlength="3" pattern="^\d{3}$" placeholder="123" required class="mt-1 w-full px-3 py-2 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800" />
+				</label>
+			</div>
+			<button type="submit" class="w-full px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700">Ödemeyi Tamamla</button>
+		</form>
+		<p id="pay-msg" class="text-sm text-center mt-3 text-gray-600 dark:text-gray-300"></p>
+	</article>
+</section>
+{% endblock %}
+{% block scripts %}
+<script>
+// read query params
+const params = new URLSearchParams(window.location.search);
+const q = params.get('q') || '';
+const d = Number(params.get('d') || '1');
+document.querySelector('input[name="q"]').value = q;
+document.querySelector('input[name="d"]').value = d;
+
+const form = document.getElementById('pay-form');
+const cardInput = document.querySelector('input[name="card_number"]');
+const expInput = document.querySelector('input[name="exp"]');
+const nameInput = document.querySelector('input[name="card_name"]');
+const cvvInput = document.querySelector('input[name="cvv"]');
+
+function toTitleCaseTR(str){
+	// Live title-case without trimming or collapsing spaces; capitalize first char and any char after a space
+	let out = '';
+	for (let i = 0; i < str.length; i++) {
+		const ch = str[i];
+		if (i === 0 || str[i-1] === ' ') out += ch.toLocaleUpperCase('tr-TR');
+		else out += ch;
+	}
+	return out;
+}
+
+// Only digits, auto-insert space every 4, max 16 digits (19 with spaces)
+cardInput.addEventListener('input', (e) => {
+	let digits = e.target.value.replace(/\D/g, '').slice(0, 16);
+	const parts = [];
+	for (let i = 0; i < digits.length; i += 4) parts.push(digits.slice(i, i + 4));
+	e.target.value = parts.join(' ');
+});
+
+// Prevent non-digit keys except navigation and backspace/delete
+cardInput.addEventListener('keydown', (e) => {
+	const allowed = ['Backspace','Delete','ArrowLeft','ArrowRight','Tab','Home','End'];
+	if (allowed.includes(e.key)) return;
+	if (!/\d/.test(e.key)) e.preventDefault();
+});
+
+// Exp: only digits, auto-insert '/', limit to 4 digits (MMYY) and cap month to 12
+expInput.addEventListener('input', (e) => {
+	let digits = e.target.value.replace(/\D/g, '').slice(0, 4);
+	if (digits.length >= 2) {
+		let mm = digits.slice(0, 2);
+		if (Number(mm) > 12) mm = '12';
+		const yy = digits.slice(2);
+		e.target.value = yy ? mm + '/' + yy : mm + '/';
+	} else {
+		e.target.value = digits;
+	}
+});
+
+expInput.addEventListener('keydown', (e) => {
+	const allowed = ['Backspace','Delete','ArrowLeft','ArrowRight','Tab','Home','End'];
+	if (allowed.includes(e.key)) return;
+	if (!/\d/.test(e.key)) e.preventDefault();
+});
+
+// Name: only letters (including TR) and spaces
+nameInput.addEventListener('input', (e) => {
+	const filtered = e.target.value.replace(/[^A-Za-zÇĞİÖŞÜçğıöşü\s]/g, '');
+	e.target.value = toTitleCaseTR(filtered);
+});
+nameInput.addEventListener('keydown', (e) => {
+	const allowed = ['Backspace','Delete','ArrowLeft','ArrowRight','Tab','Home','End',' '];
+	// Disallow space as first character
+	if (e.key === ' '){
+		const pos = e.target.selectionStart || 0;
+		if (pos === 0) { e.preventDefault(); return; }
+	}
+	if (allowed.includes(e.key)) return;
+	if (!/^[A-Za-zÇĞİÖŞÜçğıöşü]$/.test(e.key)) e.preventDefault();
+});
+
+// CVV: only digits, max 3
+cvvInput.addEventListener('input', (e) => {
+	e.target.value = e.target.value.replace(/\D/g, '').slice(0, 3);
+});
+cvvInput.addEventListener('keydown', (e) => {
+	const allowed = ['Backspace','Delete','ArrowLeft','ArrowRight','Tab','Home','End'];
+	if (allowed.includes(e.key)) return;
+	if (!/\d/.test(e.key)) e.preventDefault();
+});
+form.addEventListener('submit', async (e) => {
+	e.preventDefault();
+	// Fake validation of card fields, then create reservation
+	const bookSearch = q.trim();
+	if (!bookSearch) { window.showToast('Kitap adı eksik', 'error'); return; }
+	// Basic client-side validations
+	const exp = document.querySelector('input[name="exp"]').value.trim();
+	const cvv = document.querySelector('input[name="cvv"]').value.trim();
+	if (!/^(0[1-9]|1[0-2])\/\d{2}$/.test(exp)) { window.showToast('Geçersiz SKT (MM/YY)', 'error'); return; }
+	if (!/^\d{3}$/.test(cvv)) { window.showToast('Geçersiz CVV', 'error'); return; }
+	try{
+		// Search book by title on client to get an ID
+		const booksRes = await window.libmApi('/api/books/');
+		if (!booksRes.ok) { throw new Error('Kitap listesi alınamadı'); }
+		const books = await booksRes.json();
+		const found = books.find(b => (b.title||'').toLowerCase().includes(bookSearch.toLowerCase()));
+		if (!found) { window.showToast('Kitap bulunamadı', 'error'); return; }
+		const payload = { book: found.id, pickup_deadline_days: d, deposit_amount: 50 };
+		const res = await window.libmApi('/api/reservations/', { method:'POST', body: JSON.stringify(payload) });
+		const msg = document.getElementById('pay-msg');
+		if (res.ok) { msg.textContent = 'Ödeme başarılı, rezervasyon oluşturuldu'; window.showToast('Rezervasyon başarıyla oluşturuldu', 'success'); setTimeout(()=>{ window.location.href = '/reservations/'; }, 800); }
+		else if (res.status === 401) { window.showToast('Giriş yapmanız gerekiyor', 'error'); }
+		else { window.showToast('Rezervasyon oluşturulamadı', 'error'); }
+	}catch(err){ window.showToast('Sunucu hatası', 'error'); }
+});
+</script>
+{% endblock %}
+

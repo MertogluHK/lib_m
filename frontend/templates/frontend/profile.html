@@ -1,0 +1,261 @@
+{% extends 'frontend/base.html' %}
+{% block title %}Profil{% endblock %}
+{% block reserve_cta %}{% endblock %}
+{% block content %}
+<section id="profile-guest" class="max-w-lg mx-auto text-center space-y-4">
+	<h1 class="text-2xl font-semibold">Profil için giriş yapmanız gerekiyor</h1>
+	<p class="text-gray-600 dark:text-gray-300">Profil detaylarınızı ve topluluk etkileşimlerinizi görmek için oturum açın.</p>
+	<a href="/login/" class="inline-flex px-5 py-2 rounded bg-blue-600 text-white hover:bg-blue-700">Giriş Yap</a>
+</section>
+
+<section id="profile-auth" class="hidden space-y-8">
+	<header class="space-y-1">
+		<p class="text-sm uppercase tracking-wide text-gray-500 dark:text-gray-400">Hesabım</p>
+		<h1 class="text-3xl font-bold">Profil</h1>
+	</header>
+
+	<div class="grid md:grid-cols-3 gap-6 items-start">
+		<article class="md:col-span-1 rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6 space-y-4">
+			<h2 class="text-xl font-semibold">Profil Detayları</h2>
+			<form id="profile-form" class="space-y-3">
+				<div>
+					<label class="text-sm font-medium block mb-1">Kullanıcı adı</label>
+					<input id="profile-username" type="text" disabled class="w-full px-3 py-2 rounded border border-gray-300 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 cursor-not-allowed" />
+				</div>
+				<div>
+					<label class="text-sm font-medium block mb-1">E-posta</label>
+					<input id="profile-email" name="email" type="email" class="w-full px-3 py-2 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800" />
+				</div>
+				<div class="grid grid-cols-2 gap-3">
+					<div>
+						<label class="text-sm font-medium block mb-1">Ad</label>
+						<input id="profile-first-name" name="first_name" type="text" class="w-full px-3 py-2 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800" />
+					</div>
+					<div>
+						<label class="text-sm font-medium block mb-1">Soyad</label>
+						<input id="profile-last-name" name="last_name" type="text" class="w-full px-3 py-2 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800" />
+					</div>
+				</div>
+				<button type="submit" class="w-full px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700 text-sm font-semibold">Profili Güncelle</button>
+				<p id="profile-message" class="text-xs text-gray-500 dark:text-gray-400"></p>
+			</form>
+		</article>
+
+		<article class="md:col-span-2 space-y-6">
+			<div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6 space-y-3">
+				<div class="flex items-center justify-between">
+					<h2 class="text-xl font-semibold">Başlattığım Konuşmalar</h2>
+					<button id="profile-refresh-posts" class="text-xs px-3 py-1 rounded border border-gray-300 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800">Yenile</button>
+				</div>
+				<div id="profile-my-posts" class="grid gap-3 text-sm"></div>
+			</div>
+
+			<div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6 space-y-3">
+				<div class="flex items-center justify-between">
+					<h2 class="text-xl font-semibold">Yorumlarım</h2>
+					<button id="profile-refresh-comments" class="text-xs px-3 py-1 rounded border border-gray-300 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800">Yenile</button>
+				</div>
+				<div id="profile-my-comments" class="space-y-3 text-sm"></div>
+			</div>
+		</article>
+	</div>
+</section>
+{% endblock %}
+{% block scripts %}
+<script>
+const guestSection = document.getElementById('profile-guest');
+const authSection = document.getElementById('profile-auth');
+const usernameInput = document.getElementById('profile-username');
+const emailInput = document.getElementById('profile-email');
+const firstNameInput = document.getElementById('profile-first-name');
+const lastNameInput = document.getElementById('profile-last-name');
+const profileMessage = document.getElementById('profile-message');
+const myPostsContainer = document.getElementById('profile-my-posts');
+const myCommentsContainer = document.getElementById('profile-my-comments');
+
+function showGuest(){
+	if(guestSection) guestSection.classList.remove('hidden');
+	if(authSection) authSection.classList.add('hidden');
+}
+
+function showAuth(){
+	if(guestSection) guestSection.classList.add('hidden');
+	if(authSection) authSection.classList.remove('hidden');
+}
+
+async function loadProfile(){
+	try{
+		const res = await window.libmApi('/api/users/me/', { silent401: true });
+		if(!res.ok){
+			showGuest();
+			return;
+		}
+		const data = await res.json();
+		showAuth();
+		usernameInput.value = data.username || '';
+		emailInput.value = data.email || '';
+		firstNameInput.value = data.first_name || '';
+		lastNameInput.value = data.last_name || '';
+	}catch(err){
+		showGuest();
+	}
+}
+
+document.getElementById('profile-form').addEventListener('submit', async (e) => {
+	e.preventDefault();
+	const payload = {
+		email: emailInput.value,
+		first_name: firstNameInput.value,
+		last_name: lastNameInput.value,
+	};
+	try{
+		const res = await window.libmApi('/api/users/me/', {
+			method: 'PATCH',
+			body: JSON.stringify(payload),
+		});
+		const data = await res.json();
+		if(res.ok){
+			profileMessage.textContent = 'Profil güncellendi.';
+			window.showToast('Profil güncellendi', 'success');
+		}else{
+			profileMessage.textContent = data.detail || 'Profil güncellenemedi.';
+			window.showToast(data.detail || 'Profil güncellenemedi', 'error');
+		}
+	}catch(err){
+		window.showToast('Sunucuya ulaşılamıyor', 'error');
+	}
+});
+
+function timeAgo(dateString) {
+	const now = new Date();
+	const past = new Date(dateString);
+	const diffMs = now - past;
+	const diffMins = Math.floor(diffMs / 60000);
+	const diffHours = Math.floor(diffMs / 3600000);
+	const diffDays = Math.floor(diffMs / 86400000);
+	if (diffMins < 1) return 'Az önce';
+	if (diffMins < 60) return `${diffMins} dakika önce`;
+	if (diffHours < 24) return `${diffHours} saat önce`;
+	if (diffDays < 7) return `${diffDays} gün önce`;
+	return past.toLocaleDateString('tr-TR');
+}
+
+async function loadMyPostsProfile(){
+	const res = await window.libmApi('/api/community/posts/my_posts/', { silent401: true });
+	if(!res.ok){
+		myPostsContainer.innerHTML = '<p class="text-gray-500 dark:text-gray-400">Konuşmalarınız yüklenemedi.</p>';
+		return;
+	}
+	const data = await res.json();
+	if(!data.length){
+		myPostsContainer.innerHTML = '<p class="text-gray-500 dark:text-gray-400">Henüz konuşma başlatmadınız.</p>';
+		return;
+	}
+	myPostsContainer.innerHTML = data.map(post => {
+		let ratingDisplay = '';
+		if (post.rating) {
+			const filledStars = '★'.repeat(post.rating);
+			const emptyStars = '☆'.repeat(5 - post.rating);
+			ratingDisplay = `<span class="text-yellow-400 text-xs ml-1">${filledStars}${emptyStars}</span>`;
+		}
+		const bookTitle = post.book_title || 'Kitap adı yok';
+		const bookLink = post.book_id ? `/books/${post.book_id}/` : null;
+		const titleMarkup = bookLink
+			? `<a href="${bookLink}" class="font-semibold text-blue-700 dark:text-blue-400 underline">${bookTitle}</a>`
+			: `<span class="font-semibold">${bookTitle}</span>`;
+		const postLink = `/community/#post-${post.id}`;
+		return `
+			<article class="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-3 cursor-pointer hover:shadow-md transition-shadow" onclick="window.location.href='${postLink}'">
+				<header class="flex items-center justify-between mb-1">
+					<div class="flex items-center gap-1">
+						${titleMarkup}
+						${ratingDisplay}
+					</div>
+					<div class="flex items-center gap-2" onclick="event.stopPropagation();">
+						<button onclick="deletePostProfile(${post.id})" class="text-red-600 hover:text-red-700 text-xs px-2 py-1 rounded border border-red-300 dark:border-red-700">Sil</button>
+						<span class="text-xs text-gray-500">${timeAgo(post.created_at)}</span>
+					</div>
+				</header>
+				<p class="text-xs text-gray-500 mb-1">${post.comment_count || 0} yorum</p>
+				<p class="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">${post.content || ''}</p>
+			</article>
+		`;
+	}).join('');
+}
+
+async function loadMyCommentsProfile(){
+	const res = await window.libmApi('/api/community/posts/my_comments/', { silent401: true });
+	if(!res.ok){
+		myCommentsContainer.innerHTML = '<p class="text-gray-500 dark:text-gray-400">Yorumlarınız yüklenemedi.</p>';
+		return;
+	}
+	const data = await res.json();
+	if(!data.length){
+		myCommentsContainer.innerHTML = '<p class="text-gray-500 dark:text-gray-400">Henüz yorum yapmadınız.</p>';
+		return;
+	}
+	myCommentsContainer.innerHTML = data.map(comment => {
+		const postLink = `/community/#post-${comment.post_id}`;
+		return `
+		<article class="rounded-lg border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800 p-3 cursor-pointer hover:shadow-md transition-shadow" onclick="window.location.href='${postLink}'">
+			<header class="flex items-center justify-between mb-1">
+				<p class="font-semibold text-sm">${comment.post_book_title || 'Kitap adı yok'}</p>
+				<div class="flex items-center gap-2" onclick="event.stopPropagation();">
+					<button onclick="deleteCommentProfile(${comment.post_id}, ${comment.id})" class="text-red-600 hover:text-red-700 text-xs px-2 py-1 rounded border border-red-300 dark:border-red-700">Sil</button>
+					<span class="text-xs text-gray-500">${timeAgo(comment.created_at)}</span>
+				</div>
+			</header>
+			<p class="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">${comment.content || ''}</p>
+		</article>
+		`;
+	}).join('');
+}
+
+async function deletePostProfile(postId) {
+	if (!confirm('Bu konuşmayı silmek istediğinize emin misiniz?')) return;
+	
+	const res = await window.libmApi(`/api/community/posts/${postId}/`, {
+		method: 'DELETE'
+	});
+	
+	if (res.ok) {
+		window.showToast('Konuşma başarıyla silindi', 'success');
+		loadMyPostsProfile();
+	} else {
+		window.showToast('Konuşma silinemedi', 'error');
+	}
+}
+
+async function deleteCommentProfile(postId, commentId) {
+	if (!confirm('Bu yorumu silmek istediğinize emin misiniz?')) return;
+	
+	const res = await window.libmApi(`/api/community/posts/${postId}/comments/${commentId}/`, {
+		method: 'DELETE'
+	});
+	
+	if (res.ok) {
+		window.showToast('Yorum başarıyla silindi', 'success');
+		loadMyCommentsProfile();
+	} else {
+		window.showToast('Yorum silinemedi', 'error');
+	}
+}
+
+document.getElementById('profile-refresh-posts').addEventListener('click', (e)=>{ e.preventDefault(); loadMyPostsProfile(); });
+document.getElementById('profile-refresh-comments').addEventListener('click', (e)=>{ e.preventDefault(); loadMyCommentsProfile(); });
+
+(async function initProfile(){
+	const hasToken = !!localStorage.getItem('access');
+	if(!hasToken){
+		showGuest();
+		return;
+	}
+	await loadProfile();
+	if(authSection && !authSection.classList.contains('hidden')){
+		loadMyPostsProfile();
+		loadMyCommentsProfile();
+	}
+})();
+</script>
+{% endblock %}
+

@@ -1,0 +1,133 @@
+{% extends 'frontend/base.html' %}
+{% block title %}Rezervasyon Oluştur{% endblock %}
+{% block reserve_cta %}{% endblock %}
+{% block content %}
+<h2 class="text-2xl font-semibold mb-4">Rezervasyon Oluştur</h2>
+<article class="rounded-xl border border-gray-200 dark:border-gray-800 p-6 bg-white dark:bg-gray-900">
+	<form id="res-init-form" class="grid md:grid-cols-3 gap-3">
+		<label class="block">Kitap Adı<input class="mt-1 w-full px-3 py-2 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800" name="book_query" placeholder="Örn: 1984" required /></label>
+		<label class="block">Gün (1-3)<input class="no-spin mt-1 w-full px-3 py-2 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800" name="pickup_deadline_days" type="number" min="1" max="3" required /></label>
+		<div class="md:col-span-3"><button class="px-4 py-2 rounded bg-blue-600 text-white" type="submit">Devam Et</button></div>
+	</form>
+</article>
+<div id="res-list" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-6"></div>
+
+<!-- Login Required Modal -->
+<div id="login-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+	<div class="bg-white dark:bg-gray-900 rounded-xl shadow-lg p-6 max-w-md w-full mx-4">
+		<h3 class="text-xl font-semibold mb-4">Giriş yapmalısın!</h3>
+		<div class="flex gap-3 justify-end">
+			<button id="modal-ok-btn" class="px-4 py-2 rounded bg-gray-500 text-white hover:bg-gray-600">Tamam</button>
+			<button id="modal-login-btn" class="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700">Giriş Yap</button>
+		</div>
+	</div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+const STATUS_LABELS = {
+	'PENDING': 'Beklemede',
+	'PICKED_UP': 'Teslim Alındı',
+	'CANCELLED': 'İptal Edildi',
+	'RETURNED': 'İade Edildi',
+	'EXPIRED': 'Süresi Doldu'
+};
+
+async function loadReservations() {
+	const res = await window.libmApi('/api/reservations/', { silent401: true });
+	const list = document.getElementById('res-list');
+	if (!res.ok) { list.innerHTML = ''; return; }
+	const data = await res.json();
+	if (!data.length) {
+		list.innerHTML = '<p class="text-gray-500 dark:text-gray-400">Henüz rezervasyon bulunmuyor.</p>';
+		return;
+	}
+	list.innerHTML = data.map(r => {
+		const actions = [];
+		if (r.status === 'PENDING') {
+			actions.push(`<button type="button" class="px-3 py-1.5 rounded bg-green-600 text-white" onclick="pickup(${r.id})">Teslim Al</button>`);
+			actions.push(`<button type="button" class="px-3 py-1.5 rounded border border-red-600 text-red-600" onclick="cancelRes(${r.id})">İptal</button>`);
+		} else if (r.status === 'PICKED_UP') {
+			actions.push(`<button type="button" class="px-3 py-1.5 rounded bg-indigo-600 text-white" onclick="returnRes(${r.id})">İade Et</button>`);
+		}
+		const actionFooter = actions.length ? `<footer class="mt-3 flex flex-wrap gap-2">${actions.join('')}</footer>` : '';
+		return `
+		<article class="rounded-xl border border-gray-200 dark:border-gray-800 p-4 bg-white dark:bg-gray-900">
+			<header class="mb-2 font-semibold">Rezervasyon #${r.id}</header>
+			<p class="text-sm"><strong>Kitap:</strong> ${r.book_title || r.book}</p>
+			<p class="text-sm"><strong>Durum:</strong> ${STATUS_LABELS[r.status] || r.status}</p>
+			<p class="text-sm"><strong>Depozito:</strong> ${r.deposit_amount}</p>
+			${actionFooter}
+		</article>
+		`;
+	}).join('');
+}
+
+async function pickup(id) {
+	const res = await window.libmApi(`/api/reservations/${id}/pickup/`, { method: 'POST' });
+	if (res.ok) loadReservations(); else if (res.status !== 401) window.showToast('İşlem başarısız', 'error');
+}
+
+async function cancelRes(id) {
+	const res = await window.libmApi(`/api/reservations/${id}/cancel/`, { method: 'POST' });
+	if (res.ok) loadReservations(); else if (res.status !== 401) window.showToast('İşlem başarısız', 'error');
+}
+
+async function returnRes(id) {
+	const res = await window.libmApi(`/api/reservations/${id}/return/`, { method: 'POST' });
+	if (res.ok) loadReservations(); else if (res.status !== 401) window.showToast('İşlem başarısız', 'error');
+}
+
+const initForm = document.getElementById('res-init-form');
+const bookInput = initForm.querySelector('input[name="book_query"]');
+const urlParams = new URLSearchParams(window.location.search);
+const prefilledBook = urlParams.get('book');
+if (prefilledBook && bookInput) {
+	bookInput.value = prefilledBook;
+	bookInput.dataset.prefilled = '1';
+}
+initForm.addEventListener('submit', async (e) => {
+	e.preventDefault();
+	
+	// Check if user is logged in
+	const hasToken = !!localStorage.getItem('access');
+	if (!hasToken) {
+		showLoginModal();
+		return;
+	}
+	
+	const fd = new FormData(initForm);
+	const bookName = fd.get('book_query');
+	if (!bookName) {
+		window.showToast('Lütfen kitap adı girin', 'error');
+		return;
+	}
+	const q = encodeURIComponent(bookName);
+	const d = Number(fd.get('pickup_deadline_days'));
+	window.location.href = `/payment/?q=${q}&d=${d}`;
+});
+
+function showLoginModal() {
+	const modal = document.getElementById('login-modal');
+	const modalContent = modal.querySelector('div');
+	modal.classList.remove('hidden');
+	modalContent.classList.add('shake-animation');
+	
+	// Remove animation class after animation completes
+	setTimeout(() => {
+		modalContent.classList.remove('shake-animation');
+	}, 500);
+}
+
+// Modal buttons
+document.getElementById('modal-ok-btn').addEventListener('click', () => {
+	document.getElementById('login-modal').classList.add('hidden');
+});
+
+document.getElementById('modal-login-btn').addEventListener('click', () => {
+	window.location.href = '/login/';
+});
+
+loadReservations();
+</script>
+{% endblock %}

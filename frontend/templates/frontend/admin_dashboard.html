@@ -1,0 +1,773 @@
+{% extends 'frontend/base.html' %}
+{% block title %}Yönetim Paneli{% endblock %}
+{% block reserve_cta %}{% endblock %}
+{% block content %}
+<section id="admin-blocked" class="rounded-2xl border border-red-200 bg-red-50 text-red-800 p-6 hidden">
+	<h2 class="text-xl font-semibold mb-2">Bu alan sadece yöneticiler içindir.</h2>
+	<p>Lütfen yönetici bilgilerinle giriş yap ve tekrar dene.</p>
+	<div class="mt-4 flex gap-2">
+		<a href="/login/" class="px-4 py-2 rounded bg-red-600 text-white">Giriş Sayfasına Git</a>
+	</div>
+</section>
+
+<section id="admin-content" class="space-y-10 hidden">
+	<header>
+		<p class="text-sm uppercase tracking-wide text-gray-500 dark:text-gray-400">Kontrol Merkezi</p>
+		<h1 class="text-3xl font-bold mt-1">Yönetici Paneli</h1>
+		<div class="mt-4 flex flex-wrap gap-2">
+			<button id="admin-tab-add" class="px-3 py-1.5 rounded-full text-sm font-medium bg-blue-600 text-white">Kitap Ekle</button>
+			<button id="admin-tab-stock" class="px-3 py-1.5 rounded-full text-sm font-medium bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200">Stoğu Yönet</button>
+			<button id="admin-tab-users" class="px-3 py-1.5 rounded-full text-sm font-medium bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200">Kullanıcıları Yönet</button>
+			<button id="admin-tab-reservations" class="px-3 py-1.5 rounded-full text-sm font-medium bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200">Rezervasyonları Görüntüle</button>
+		</div>
+	</header>
+
+	<article id="admin-section-add" class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6 space-y-6">
+		<div>
+			<h2 class="text-2xl font-semibold">Kitap Ekle</h2>
+		</div>
+		<form id="admin-add-book-form" class="grid md:grid-cols-2 gap-4">
+			<label class="flex flex-col text-sm font-medium gap-1">
+				<span>Kitap Adı *</span>
+				<input name="title" required class="px-3 py-2 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800" />
+			</label>
+			<label class="flex flex-col text-sm font-medium gap-1">
+				<span>Yazar *</span>
+				<input name="author" required class="px-3 py-2 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800" />
+			</label>
+			<label class="flex flex-col text-sm font-medium gap-1">
+				<span>Sayfa Sayısı *</span>
+				<input name="page_count" type="number" min="1" required class="px-3 py-2 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800" />
+			</label>
+			<label class="flex flex-col text-sm font-medium gap-1 md:col-span-2">
+				<span>Açıklama *</span>
+				<textarea name="description" rows="3" required class="px-3 py-2 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800"></textarea>
+			</label>
+			<label class="flex flex-col text-sm font-medium gap-1">
+				<span>Kategori</span>
+				<input name="category" class="px-3 py-2 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800" placeholder="Roman, Biyografi" />
+			</label>
+			<label class="flex flex-col text-sm font-medium gap-1">
+				<span>Stok (0-4) *</span>
+				<input name="stock" type="number" min="0" max="4" required class="px-3 py-2 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800" />
+			</label>
+			<div class="md:col-span-2">
+				<div class="flex flex-col text-sm font-medium gap-1">
+					<span>Kitap Kapağı</span>
+					<div id="cover-upload-area" class="relative border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg p-6 text-center hover:border-blue-500 dark:hover:border-blue-400 transition-colors cursor-pointer">
+						<input type="file" id="cover-file-input" accept="image/*" class="hidden" />
+						<div id="cover-upload-content" class="space-y-2 pointer-events-none">
+							<svg class="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
+								<path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+							</svg>
+							<div class="text-sm text-gray-600 dark:text-gray-400">
+								<span class="font-medium text-blue-600 dark:text-blue-400">Dosyaya tıklayın</span> veya sürükleyip bırakın
+							</div>
+							<p class="text-xs text-gray-500 dark:text-gray-500">PNG, JPG, GIF (Max. 5MB)</p>
+						</div>
+						<div id="cover-preview" class="hidden">
+							<img id="cover-preview-img" src="" alt="Önizleme" class="mx-auto max-h-48 rounded-lg" />
+							<button type="button" id="cover-remove-btn" class="mt-2 text-sm text-red-600 dark:text-red-400 hover:underline">Kaldır</button>
+						</div>
+					</div>
+				</div>
+			</div>
+			<button type="submit" id="admin-add-book-submit" class="md:col-span-2 px-4 py-3 rounded bg-blue-600 text-white font-semibold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed">
+				<span id="admin-submit-text">Kitap Ekle</span>
+				<span id="admin-submit-loading" class="hidden">Ekleniyor...</span>
+			</button>
+		</form>
+	</article>
+
+	<article id="admin-section-stock" class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6 space-y-4 hidden">
+		<div class="flex items-center justify-between">
+			<div>
+				<h2 class="text-2xl font-semibold">Stok Yönetimi</h2>
+			</div>
+			<button id="admin-refresh-books" class="text-sm px-3 py-1 rounded border border-gray-300 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800">Yenile</button>
+		</div>
+		<div class="overflow-x-auto">
+			<table class="min-w-full text-sm" id="admin-books-table">
+				<thead>
+					<tr class="text-left border-b border-gray-200 dark:border-gray-800">
+						<th class="py-2 pr-3">Kapak</th>
+						<th class="py-2 pr-3">Kitap</th>
+						<th class="py-2 pr-3">Sayfa</th>
+						<th class="py-2 pr-3">Stok</th>
+						<th class="py-2 pr-3">İşlemler</th>
+						<th class="py-2 pr-3">Sil</th>
+					</tr>
+				</thead>
+				<tbody id="admin-books-body"></tbody>
+			</table>
+		</div>
+	</article>
+
+	<article id="admin-section-users" class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6 space-y-4 hidden">
+		<div class="flex items-center justify-between">
+			<div>
+				<h2 class="text-2xl font-semibold">Kullanıcı Yönetimi</h2>
+			</div>
+			<button id="admin-refresh-users" class="text-sm px-3 py-1 rounded border border-gray-300 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800">Yenile</button>
+		</div>
+		<div class="overflow-x-auto">
+			<table class="min-w-full text-sm">
+				<thead>
+					<tr class="text-left border-b border-gray-200 dark:border-gray-800">
+						<th class="py-2 pr-3">Kullanıcı</th>
+						<th class="py-2 pr-3">E-posta</th>
+						<th class="py-2 pr-3">Durum</th>
+						<th class="py-2 pr-3">İşlem</th>
+					</tr>
+				</thead>
+				<tbody id="admin-users-body"></tbody>
+			</table>
+		</div>
+	</article>
+
+	<article id="admin-section-reservations" class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6 space-y-4 hidden">
+		<div class="flex items-center justify-between">
+			<div>
+				<h2 class="text-2xl font-semibold">Rezervasyonlar</h2>
+			</div>
+			<button id="admin-refresh-reservations" class="text-sm px-3 py-1 rounded border border-gray-300 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800">Yenile</button>
+		</div>
+		<div class="overflow-x-auto">
+			<table class="min-w-full text-sm">
+				<thead>
+					<tr class="text-left border-b border-gray-200 dark:border-gray-800">
+						<th class="py-2 pr-3">#</th>
+						<th class="py-2 pr-3">Kullanıcı</th>
+						<th class="py-2 pr-3">Kitap</th>
+						<th class="py-2 pr-3">Durum</th>
+						<th class="py-2 pr-3">İşlemler</th>
+					</tr>
+				</thead>
+				<tbody id="admin-reservations-body"></tbody>
+			</table>
+		</div>
+	</article>
+</section>
+
+<div id="admin-success-modal" class="hidden fixed inset-0 z-50 bg-black/50 backdrop-blur flex items-center justify-center px-4">
+	<div class="bg-white dark:bg-gray-900 rounded-2xl p-6 max-w-md w-full text-center space-y-4 border border-gray-200 dark:border-gray-800 shadow-2xl">
+		<h3 class="text-xl font-semibold text-green-600 dark:text-green-400">Kitap başarıyla eklendi</h3>
+		<button id="admin-success-ok" type="button" class="w-full px-4 py-3 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700">Tamam</button>
+	</div>
+</div>
+{% endblock %}
+{% block scripts %}
+<style>
+@keyframes shake {
+	0%, 100% { transform: translateX(0); }
+	10%, 30%, 50%, 70%, 90% { transform: translateX(-4px); }
+	20%, 40%, 60%, 80% { transform: translateX(4px); }
+}
+.shake {
+	animation: shake 0.5s;
+}
+</style>
+<script>
+const adminContent = document.getElementById('admin-content');
+const adminBlocked = document.getElementById('admin-blocked');
+const booksBody = document.getElementById('admin-books-body');
+const usersBody = document.getElementById('admin-users-body');
+const addBookForm = document.getElementById('admin-add-book-form');
+const reservationsBody = document.getElementById('admin-reservations-body');
+const tabAdd = document.getElementById('admin-tab-add');
+const tabStock = document.getElementById('admin-tab-stock');
+const tabUsers = document.getElementById('admin-tab-users');
+const tabRes = document.getElementById('admin-tab-reservations');
+const sectionAdd = document.getElementById('admin-section-add');
+const sectionStock = document.getElementById('admin-section-stock');
+const sectionUsers = document.getElementById('admin-section-users');
+const sectionRes = document.getElementById('admin-section-reservations');
+
+async function ensureAdmin(){
+	try{
+		const res = await window.libmApi('/api/users/me/', { silent401: true });
+		if(!res.ok){
+			throw new Error('auth');
+		}
+		const data = await res.json();
+		if(!data.is_staff){
+			throw new Error('not-admin');
+		}
+		adminBlocked.classList.add('hidden');
+		adminContent.classList.remove('hidden');
+		localStorage.setItem('userRole', 'admin');
+		return true;
+	}catch(err){
+		adminBlocked.classList.remove('hidden');
+		adminContent.classList.add('hidden');
+		return false;
+	}
+}
+
+function setActiveTab(target){
+	const tabs = [tabAdd, tabStock, tabUsers, tabRes];
+	tabs.forEach(btn => {
+		if(!btn) return;
+		const isActive = btn === target;
+		btn.classList.toggle('bg-blue-600', isActive);
+		btn.classList.toggle('text-white', isActive);
+		btn.classList.toggle('bg-gray-100', !isActive);
+		btn.classList.toggle('dark:bg-gray-800', !isActive);
+		btn.classList.toggle('text-gray-700', !isActive);
+		btn.classList.toggle('dark:text-gray-200', !isActive);
+	});
+	if(sectionAdd) sectionAdd.classList.toggle('hidden', target !== tabAdd);
+	if(sectionStock) sectionStock.classList.toggle('hidden', target !== tabStock);
+	if(sectionUsers) sectionUsers.classList.toggle('hidden', target !== tabUsers);
+	if(sectionRes) sectionRes.classList.toggle('hidden', target !== tabRes);
+}
+
+if(tabAdd) tabAdd.addEventListener('click', (e)=>{ e.preventDefault(); setActiveTab(tabAdd); });
+if(tabStock) tabStock.addEventListener('click', (e)=>{ e.preventDefault(); setActiveTab(tabStock); });
+if(tabUsers) tabUsers.addEventListener('click', (e)=>{ e.preventDefault(); setActiveTab(tabUsers); });
+if(tabRes) tabRes.addEventListener('click', (e)=>{ e.preventDefault(); setActiveTab(tabRes); });
+
+function renderBooks(books, highlightId = null){
+	if(!books.length){
+		booksBody.innerHTML = `<tr><td colspan="6" class="py-4 text-center text-gray-500">Henüz kitap bulunmuyor.</td></tr>`;
+		return;
+	}
+	const FALLBACK_IMAGE = '/static/images/library-hero.webp';
+	booksBody.innerHTML = books.map(book => {
+		const isHighlighted = highlightId && book.id === highlightId;
+		const coverImage = book.cover_image || `/static/images/${book.id}.jpg`;
+		return `
+		<tr id="book-row-${book.id}" class="border-b border-gray-100 dark:border-gray-800 ${isHighlighted ? 'bg-yellow-100 dark:bg-yellow-900/30 transition-colors' : ''}">
+			<td class="py-2 pr-3">
+				<img src="${coverImage}" alt="${book.title}" class="w-12 h-16 object-contain bg-gray-100 dark:bg-gray-800 rounded" onerror="this.onerror=null;this.src='${FALLBACK_IMAGE}'" />
+			</td>
+			<td class="py-2 pr-3">
+				<p class="font-medium">${book.title}</p>
+				<p class="text-xs text-gray-500">${book.author}</p>
+			</td>
+			<td class="py-2 pr-3">${book.page_count || '-'}</td>
+			<td class="py-2 pr-3 font-semibold">${book.stock}</td>
+			<td class="py-2 pr-3">
+				<div class="flex gap-2 items-center">
+					<button data-book-id="${book.id}" data-stock="${book.stock}" data-direction="down" class="px-2 py-1 rounded border border-gray-300 dark:border-gray-700 text-sm">-</button>
+					<button data-book-id="${book.id}" data-stock="${book.stock}" data-direction="up" class="px-2 py-1 rounded border border-gray-300 dark:border-gray-700 text-sm">+</button>
+				</div>
+			</td>
+			<td class="py-2 pr-3">
+				<button data-delete-book-id="${book.id}" data-book-title="${book.title.replace(/"/g, '&quot;')}" class="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors" title="Kitabı Sil">
+					<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+					</svg>
+				</button>
+			</td>
+		</tr>
+		`;
+	}).join('');
+	if(highlightId){
+		setTimeout(() => {
+			const row = document.getElementById(`book-row-${highlightId}`);
+			if(row){
+				row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+				setTimeout(() => {
+					row.classList.remove('bg-yellow-100', 'dark:bg-yellow-900/30');
+				}, 3000);
+			}
+		}, 100);
+	}
+}
+
+async function loadBooks(highlightId = null){
+	const res = await window.libmApi('/api/books/?page_size=100&sort=id_asc', { silent401: true });
+	if(!res.ok){
+		booksBody.innerHTML = `<tr><td colspan="6" class="py-4 text-center text-red-500">Kitap listesi yüklenemedi.</td></tr>`;
+		return;
+	}
+	const data = await res.json();
+	const list = Array.isArray(data.results) ? data.results : data;
+	renderBooks(list, highlightId);
+}
+
+booksBody.addEventListener('click', async (e) => {
+	// Handle delete button
+	const deleteBtn = e.target.closest('button[data-delete-book-id]');
+	if(deleteBtn){
+		e.stopPropagation();
+		const bookId = Number(deleteBtn.dataset.deleteBookId);
+		const bookTitle = deleteBtn.dataset.bookTitle || 'Bu kitap';
+		if(!confirm(`"${bookTitle}" adlı kitabı veritabanından tamamen silmek istediğinize emin misiniz?\n\nBu işlem geri alınamaz!`)){
+			return;
+		}
+		const res = await window.libmApi(`/api/books/${bookId}/`, { method:'DELETE', silent401: true });
+		if(res.ok){
+			window.showToast('Kitap başarıyla silindi', 'success');
+			loadBooks();
+		}else{
+			const data = await res.json();
+			window.showToast(data.detail || 'Kitap silinemedi', 'error');
+		}
+		return;
+	}
+	
+	// Handle stock buttons
+	const btn = e.target.closest('button[data-book-id]');
+	if(!btn) return;
+	const id = Number(btn.dataset.bookId);
+	const current = Number(btn.dataset.stock);
+	const direction = btn.dataset.direction;
+	let updated = direction === 'up' ? current + 1 : current - 1;
+	updated = Math.max(0, Math.min(4, updated));
+	if(updated === current) return;
+	const res = await window.libmApi(`/api/books/${id}/`, { method:'PATCH', body: JSON.stringify({ stock: updated }), silent401: true });
+	if(res.ok){
+		window.showToast('Stok güncellendi', 'success');
+		loadBooks();
+	}else{
+		window.showToast('Stok güncellenemedi', 'error');
+	}
+});
+
+function clearValidationErrors(){
+	const inputs = addBookForm.querySelectorAll('input, textarea');
+	inputs.forEach(input => {
+		input.classList.remove('border-red-500', 'shake');
+		input.classList.add('border-gray-300', 'dark:border-gray-700');
+	});
+}
+
+function showValidationError(input){
+	input.classList.remove('border-gray-300', 'dark:border-gray-700');
+	input.classList.add('border-red-500', 'shake');
+	setTimeout(() => {
+		input.classList.remove('shake');
+	}, 500);
+}
+
+// Cover upload functionality
+const coverUploadArea = document.getElementById('cover-upload-area');
+const coverFileInput = document.getElementById('cover-file-input');
+const coverUploadContent = document.getElementById('cover-upload-content');
+const coverPreview = document.getElementById('cover-preview');
+const coverPreviewImg = document.getElementById('cover-preview-img');
+const coverRemoveBtn = document.getElementById('cover-remove-btn');
+
+function resetCoverUpload(){
+	if(coverFileInput) coverFileInput.value = '';
+	if(coverUploadContent) coverUploadContent.classList.remove('hidden');
+	if(coverPreview) coverPreview.classList.add('hidden');
+}
+
+function showCoverPreview(file){
+	if(!file || !file.type.startsWith('image/')) return;
+	
+	const reader = new FileReader();
+	reader.onload = (e) => {
+		if(coverPreviewImg) coverPreviewImg.src = e.target.result;
+		if(coverUploadContent) coverUploadContent.classList.add('hidden');
+		if(coverPreview) coverPreview.classList.remove('hidden');
+	};
+	reader.readAsDataURL(file);
+}
+
+if(coverUploadArea && coverFileInput){
+	// Click to select file - only trigger if clicking on the upload area itself, not on buttons
+	coverUploadArea.addEventListener('click', (e) => {
+		// Don't trigger if clicking on remove button or preview image
+		if(e.target.closest('#cover-remove-btn') || e.target.closest('#cover-preview-img')){
+			return;
+		}
+		// Only trigger if clicking on the upload area (not already on a file input)
+		if(e.target !== coverFileInput){
+			e.preventDefault();
+			e.stopPropagation();
+			coverFileInput.click();
+		}
+	});
+	
+	// File input change
+	coverFileInput.addEventListener('change', (e) => {
+		const file = e.target.files[0];
+		if(file){
+			if(file.size > 5 * 1024 * 1024){
+				window.showToast('Dosya boyutu 5MB\'dan küçük olmalıdır', 'error');
+				coverFileInput.value = ''; // Reset input
+				return;
+			}
+			if(!file.type.startsWith('image/')){
+				window.showToast('Lütfen bir resim dosyası seçin', 'error');
+				coverFileInput.value = ''; // Reset input
+				return;
+			}
+			showCoverPreview(file);
+		}
+	});
+	
+	// Drag and drop
+	coverUploadArea.addEventListener('dragover', (e) => {
+		e.preventDefault();
+		coverUploadArea.classList.add('border-blue-500', 'dark:border-blue-400', 'bg-blue-50', 'dark:bg-blue-900/20');
+	});
+	
+	coverUploadArea.addEventListener('dragleave', (e) => {
+		e.preventDefault();
+		coverUploadArea.classList.remove('border-blue-500', 'dark:border-blue-400', 'bg-blue-50', 'dark:bg-blue-900/20');
+	});
+	
+	coverUploadArea.addEventListener('drop', (e) => {
+		e.preventDefault();
+		e.stopPropagation();
+		coverUploadArea.classList.remove('border-blue-500', 'dark:border-blue-400', 'bg-blue-50', 'dark:bg-blue-900/20');
+		
+		const file = e.dataTransfer.files[0];
+		if(file){
+			if(!file.type.startsWith('image/')){
+				window.showToast('Lütfen bir resim dosyası seçin', 'error');
+				return;
+			}
+			if(file.size > 5 * 1024 * 1024){
+				window.showToast('Dosya boyutu 5MB\'dan küçük olmalıdır', 'error');
+				return;
+			}
+			// Create a new FileList-like object and assign to input
+			const dataTransfer = new DataTransfer();
+			dataTransfer.items.add(file);
+			coverFileInput.files = dataTransfer.files;
+			showCoverPreview(file);
+		}
+	});
+}
+
+if(coverRemoveBtn){
+	coverRemoveBtn.addEventListener('click', (e) => {
+		e.preventDefault();
+		e.stopPropagation();
+		resetCoverUpload();
+	});
+}
+
+addBookForm.addEventListener('submit', async (e) => {
+	e.preventDefault();
+	
+	const submitBtn = document.getElementById('admin-add-book-submit');
+	const submitText = document.getElementById('admin-submit-text');
+	const submitLoading = document.getElementById('admin-submit-loading');
+	
+	// Disable submit button and show loading
+	if(submitBtn){
+		submitBtn.disabled = true;
+		if(submitText) submitText.classList.add('hidden');
+		if(submitLoading) submitLoading.classList.remove('hidden');
+	}
+	
+	clearValidationErrors();
+	const formData = new FormData(addBookForm);
+	const requiredFields = {
+		title: formData.get('title'),
+		author: formData.get('author'),
+		page_count: formData.get('page_count'),
+		description: formData.get('description'),
+		stock: formData.get('stock'),
+	};
+	let hasError = false;
+	for(const [field, value] of Object.entries(requiredFields)){
+		if(!value || (field === 'page_count' && Number(value) < 1) || (field === 'stock' && (Number(value) < 0 || Number(value) > 4))){
+			const input = addBookForm.querySelector(`[name="${field}"]`);
+			if(input){
+				showValidationError(input);
+				hasError = true;
+			}
+		}
+	}
+	if(hasError){
+		// Re-enable submit button
+		if(submitBtn){
+			submitBtn.disabled = false;
+			if(submitText) submitText.classList.remove('hidden');
+			if(submitLoading) submitLoading.classList.add('hidden');
+		}
+		window.showToast('Lütfen tüm zorunlu alanları doldurun ve geçerli değerler girin.', 'error');
+		return;
+	}
+	
+	try {
+		const payload = {
+			title: requiredFields.title,
+			author: requiredFields.author,
+			isbn: `ADM-${Date.now()}`,
+			page_count: Number(requiredFields.page_count),
+			description: requiredFields.description,
+			category: formData.get('category') || '',
+			stock: Number(requiredFields.stock),
+			publisher: '',
+			published_year: null,
+		};
+		
+		const res = await window.libmApi('/api/books/', { method:'POST', body: JSON.stringify(payload), silent401: true });
+		
+		// Check HTTP status code first
+		const isSuccess = res.status >= 200 && res.status < 300;
+		
+		// Try to parse response as JSON
+		let data = null;
+		let jsonParseError = false;
+		try {
+			const text = await res.text();
+			if(text) {
+				data = JSON.parse(text);
+			}
+		} catch(parseError) {
+			console.error('JSON parse error:', parseError);
+			jsonParseError = true;
+		}
+		
+		if(isSuccess){
+			// Success - book was added to database
+			const newBookId = data?.id;
+			
+			if(!newBookId){
+				// Response doesn't have ID, but status is success - verify by checking if we can get the book
+				console.warn('Book creation response missing ID, but status is success');
+			}
+			
+			// Upload cover image if selected
+			if(newBookId){
+				const coverFile = document.getElementById('cover-file-input').files[0];
+				if(coverFile){
+					try {
+						const uploadFormData = new FormData();
+						uploadFormData.append('cover', coverFile);
+						const token = localStorage.getItem('access');
+						const uploadRes = await fetch(`/api/books/${newBookId}/upload_cover/`, {
+							method: 'POST',
+							headers: {
+								'Authorization': token ? `Bearer ${token}` : '',
+							},
+							body: uploadFormData
+						});
+						
+						if(uploadRes.ok){
+							const uploadData = await uploadRes.json().catch(() => ({}));
+							console.log('Cover uploaded successfully:', uploadData);
+							// Success message already shown for book creation
+						} else {
+							const uploadData = await uploadRes.json().catch(() => ({}));
+							const errorMsg = uploadData.detail || `HTTP ${uploadRes.status}`;
+							console.error('Cover upload failed:', errorMsg);
+							window.showToast(`Kitap eklendi ancak kapak yüklenemedi: ${errorMsg}`, 'warning');
+						}
+					} catch(uploadErr) {
+						console.error('Cover upload error:', uploadErr);
+						window.showToast(`Kitap eklendi ancak kapak yüklenemedi: ${uploadErr.message || 'Bilinmeyen hata'}`, 'warning');
+					}
+				}
+			}
+			
+			// Show success message - book is definitely in database
+			window.showToast('Kitabınız başarıyla eklendi!', 'success');
+			
+			// Clear form
+			addBookForm.reset();
+			resetCoverUpload();
+			
+			// Wait a moment for user to see the success message, then reload page
+			setTimeout(() => {
+				window.location.reload();
+			}, 1500);
+		} else {
+			// Error - book was NOT added to database
+			// Re-enable submit button
+			if(submitBtn){
+				submitBtn.disabled = false;
+				if(submitText) submitText.classList.remove('hidden');
+				if(submitLoading) submitLoading.classList.add('hidden');
+			}
+			
+			// Extract error message
+			let errorMsg = 'Bir hata ile karşılaşıldı';
+			if(data){
+				// Handle DRF validation errors
+				if(data.detail){
+					errorMsg = data.detail;
+				} else if(data.message){
+					errorMsg = data.message;
+				} else if(typeof data === 'object'){
+					// Check for field-specific errors
+					const fieldErrors = [];
+					for(const [field, errors] of Object.entries(data)){
+						if(Array.isArray(errors)){
+							fieldErrors.push(`${field}: ${errors.join(', ')}`);
+						} else if(typeof errors === 'string'){
+							fieldErrors.push(`${field}: ${errors}`);
+						} else if(typeof errors === 'object' && errors.length){
+							fieldErrors.push(`${field}: ${errors.join(', ')}`);
+						}
+					}
+					if(fieldErrors.length > 0){
+						errorMsg = fieldErrors.join('; ');
+					} else {
+						errorMsg = data.error || errorMsg;
+					}
+				}
+			} else if(jsonParseError){
+				errorMsg = `Sunucu hatası (HTTP ${res.status}). Kitap veritabanına eklenmedi.`;
+			} else {
+				errorMsg = `Kitap eklenemedi (HTTP ${res.status}). Veritabanına eklenmedi.`;
+			}
+			
+			window.showToast(`Kitap eklenemedi: ${errorMsg}`, 'error');
+		}
+	} catch(error) {
+		// Network error or other exception - book was likely NOT added
+		// Re-enable submit button
+		if(submitBtn){
+			submitBtn.disabled = false;
+			if(submitText) submitText.classList.remove('hidden');
+			if(submitLoading) submitLoading.classList.add('hidden');
+		}
+		console.error('Error adding book:', error);
+		window.showToast('Bir hata ile karşılaşıldı. Kitap veritabanına eklenmedi. Lütfen tekrar deneyin.', 'error');
+	}
+});
+
+function reservationActions(reservation){
+	const actions = [];
+	if(reservation.status === 'PENDING'){
+		actions.push(`<button data-res-action="pickup" data-res-id="${reservation.id}" class="px-2 py-1 rounded bg-green-600 text-white text-xs">Teslim Edildi</button>`);
+		actions.push(`<button data-res-action="cancel" data-res-id="${reservation.id}" class="px-2 py-1 rounded bg-red-600 text-white text-xs">İptal</button>`);
+	}else if(reservation.status === 'PICKED_UP'){
+		actions.push(`<button data-res-action="return" data-res-id="${reservation.id}" class="px-2 py-1 rounded bg-blue-600 text-white text-xs">İade Al</button>`);
+	}
+	return actions.join(' ');
+}
+
+
+function renderUsers(users){
+	if(!users.length){
+		usersBody.innerHTML = `<tr><td colspan="4" class="py-4 text-center text-gray-500">Kullanıcı bulunamadı.</td></tr>`;
+		return;
+	}
+	usersBody.innerHTML = users.map(user => `
+		<tr class="border-b border-gray-100 dark:border-gray-800">
+			<td class="py-2 pr-3 font-medium">${user.username}</td>
+			<td class="py-2 pr-3">${user.email || '-'}</td>
+			<td class="py-2 pr-3">${user.is_active ? 'Aktif' : 'Engelli'}</td>
+			<td class="py-2 pr-3">
+				<button data-user-id="${user.id}" data-active="${user.is_active}" class="px-3 py-1 rounded border border-gray-300 dark:border-gray-700 text-xs">
+					${user.is_active ? 'Engelle' : 'Aktifleştir'}
+				</button>
+			</td>
+		</tr>
+	`).join('');
+}
+
+async function loadUsers(){
+	const res = await window.libmApi('/api/users/manage/', { silent401: true });
+	if(!res.ok){
+		usersBody.innerHTML = `<tr><td colspan="4" class="py-4 text-center text-red-500">Kullanıcılar yüklenemedi.</td></tr>`;
+		return;
+	}
+	const data = await res.json();
+	const list = Array.isArray(data) ? data : (data.results || []);
+	renderUsers(list);
+}
+
+usersBody.addEventListener('click', async (e) => {
+	const btn = e.target.closest('button[data-user-id]');
+	if(!btn) return;
+	const id = btn.dataset.userId;
+	const isActive = btn.dataset.active === 'true';
+	const res = await window.libmApi(`/api/users/manage/${id}/`, { method:'PATCH', body: JSON.stringify({ is_active: !isActive }), silent401: true });
+	if(res.ok){
+		window.showToast('Kullanıcı güncellendi', 'success');
+		loadUsers();
+	}else{
+		window.showToast('Kullanıcı güncellenemedi', 'error');
+	}
+});
+
+function statusColor(status){
+	switch(status){
+		case 'PENDING': return 'bg-yellow-100 text-yellow-700';
+		case 'PICKED_UP': return 'bg-blue-100 text-blue-700';
+		case 'RETURNED': return 'bg-green-100 text-green-700';
+		case 'CANCELLED': return 'bg-red-100 text-red-700';
+		default: return 'bg-gray-100 text-gray-700';
+	}
+}
+
+function renderReservations(reservations){
+	if(!reservationsBody) return;
+	if(!reservations.length){
+		reservationsBody.innerHTML = `<tr><td colspan="5" class="py-4 text-center text-gray-500">Rezervasyon bulunamadı.</td></tr>`;
+		return;
+	}
+	reservationsBody.innerHTML = reservations.map(item => `
+		<tr class="border-b border-gray-100 dark:border-gray-800">
+			<td class="py-2 pr-3 font-semibold">#${item.id}</td>
+			<td class="py-2 pr-3">${item.user_username || '-'}</td>
+			<td class="py-2 pr-3">${item.book_title || '-'}</td>
+			<td class="py-2 pr-3">
+				<span class="inline-flex px-2 py-1 rounded-full text-xs ${statusColor(item.status)}">${item.status}</span>
+			</td>
+			<td class="py-2 pr-3 flex flex-wrap gap-2">${reservationActions(item)}</td>
+		</tr>
+	`).join('');
+}
+
+async function loadReservations(){
+	if(!reservationsBody) return;
+	const res = await window.libmApi('/api/reservations/', { silent401: true });
+	if(!res.ok){
+		reservationsBody.innerHTML = `<tr><td colspan="5" class="py-4 text-center text-red-500">Rezervasyonlar yüklenemedi.</td></tr>`;
+		return;
+	}
+	const data = await res.json();
+	const list = Array.isArray(data) ? data : (data.results || []);
+	renderReservations(list);
+}
+
+if(reservationsBody){
+	reservationsBody.addEventListener('click', async (e) => {
+		const btn = e.target.closest('button[data-res-action]');
+		if(!btn) return;
+		const action = btn.dataset.resAction;
+		const id = btn.dataset.resId;
+		const endpointMap = {
+			pickup: `/api/reservations/${id}/pickup/`,
+			cancel: `/api/reservations/${id}/cancel/`,
+			return: `/api/reservations/${id}/return/`,
+		};
+		const res = await window.libmApi(endpointMap[action], { method:'POST', silent401: true });
+		if(res.ok){
+			window.showToast('Rezervasyon güncellendi', 'success');
+			loadReservations();
+			loadBooks();
+		}else{
+			const data = await res.json();
+			window.showToast(data.detail || 'İşlem başarısız', 'error');
+		}
+	});
+}
+
+if(document.getElementById('admin-refresh-reservations')){
+	document.getElementById('admin-refresh-reservations').addEventListener('click', (e)=>{ e.preventDefault(); loadReservations(); });
+}
+
+if(document.getElementById('admin-refresh-books')){
+	document.getElementById('admin-refresh-books').addEventListener('click', (e)=>{ e.preventDefault(); loadBooks(); });
+}
+if(document.getElementById('admin-refresh-users')){
+	document.getElementById('admin-refresh-users').addEventListener('click', (e)=>{ e.preventDefault(); loadUsers(); });
+}
+
+(async function initAdmin(){
+	const ok = await ensureAdmin();
+	if(ok){
+		loadBooks();
+		loadUsers();
+		loadReservations();
+		setActiveTab(tabAdd);
+	}
+})();
+</script>
+{% endblock %}
+
