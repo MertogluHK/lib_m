@@ -17,7 +17,7 @@ class IsStaffOrReadOnly(permissions.BasePermission):
 	def has_permission(self, request, view):
 		if request.method in permissions.SAFE_METHODS:
 			return True
-		return request.user.is_authenticated and request.user.is_staff
+		return request.user and request.user.is_authenticated and request.user.is_staff
 
 class BookViewSet(viewsets.ModelViewSet):
 	queryset = Book.objects.all()
@@ -25,6 +25,8 @@ class BookViewSet(viewsets.ModelViewSet):
 	permission_classes = [IsStaffOrReadOnly]
 	page_size = 15
 	SORT_MAPPING = {
+		'id_asc': ('id',),
+		'id_desc': ('-id',),
 		'title_asc': ('title',),
 		'title_desc': ('-title',),
 		'created_desc': ('-created_at',),

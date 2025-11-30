@@ -38,7 +38,8 @@ class CommunityPostViewSet(viewsets.ModelViewSet):
 	def perform_destroy(self, instance):
 		book = instance.book
 		super().perform_destroy(instance)
-		recalc_book_rating_from_posts(book)
+		if book:
+			recalc_book_rating_from_posts(book)
 
 	@action(detail=False, methods=['get'])
 	def my_posts(self, request):

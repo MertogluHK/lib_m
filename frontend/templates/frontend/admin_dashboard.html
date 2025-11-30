@@ -277,14 +277,21 @@ function renderBooks(books, highlightId = null){
 }
 
 async function loadBooks(highlightId = null){
-	const res = await window.libmApi('/api/books/?page_size=100&sort=id_asc', { silent401: true });
-	if(!res.ok){
-		booksBody.innerHTML = `<tr><td colspan="6" class="py-4 text-center text-red-500">Kitap listesi yüklenemedi.</td></tr>`;
-		return;
+	try {
+		const res = await window.libmApi('/api/books/?page_size=100&sort=title_asc', { silent401: true });
+		if(!res.ok){
+			const errorText = await res.text();
+			console.error('Books API error:', res.status, errorText);
+			booksBody.innerHTML = `<tr><td colspan="6" class="py-4 text-center text-red-500">Kitap listesi yüklenemedi (HTTP ${res.status}).</td></tr>`;
+			return;
+		}
+		const data = await res.json();
+		const list = Array.isArray(data.results) ? data.results : data;
+		renderBooks(list, highlightId);
+	} catch(error) {
+		console.error('Error loading books:', error);
+		booksBody.innerHTML = `<tr><td colspan="6" class="py-4 text-center text-red-500">Kitap listesi yüklenemedi: ${error.message}</td></tr>`;
 	}
-	const data = await res.json();
-	const list = Array.isArray(data.results) ? data.results : data;
-	renderBooks(list, highlightId);
 }
 
 booksBody.addEventListener('click', async (e) => {
