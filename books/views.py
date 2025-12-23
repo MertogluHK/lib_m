@@ -39,6 +39,7 @@ class BookViewSet(viewsets.ModelViewSet):
 
 	def get_queryset(self):
 		qs = super().get_queryset()
+		# Annotate with rating calculations
 		qs = qs.annotate(
 			avg_rating_db=Avg('reviews__rating'),
 		).annotate(
@@ -90,31 +91,40 @@ class BookViewSet(viewsets.ModelViewSet):
 
 	def list(self, request, *args, **kwargs):
 		try:
-			page_size = int(request.query_params.get('page_size', self.page_size))
-		except (TypeError, ValueError):
-			page_size = self.page_size
-		page_size = max(1, min(100, page_size))
-		queryset = self.apply_sorting(self.filter_queryset(self.get_queryset()))
-		total = queryset.count()
-		page = request.query_params.get('page')
-		try:
-			page = int(page)
-			if page < 1:
+			try:
+				page_size = int(request.query_params.get('page_size', self.page_size))
+			except (TypeError, ValueError):
+				page_size = self.page_size
+			page_size = max(1, min(100, page_size))
+			queryset = self.apply_sorting(self.filter_queryset(self.get_queryset()))
+			total = queryset.count()
+			page = request.query_params.get('page')
+			try:
+				page = int(page)
+				if page < 1:
+					page = 1
+			except (TypeError, ValueError):
 				page = 1
-		except (TypeError, ValueError):
-			page = 1
-		total_pages = max(1, math.ceil(total / page_size)) if total else 1
-		if total and page > total_pages:
-			page = total_pages
-		start = (page - 1) * page_size
-		end = start + page_size
-		serializer = self.get_serializer(queryset[start:end], many=True)
-		return Response({
-			'results': serializer.data,
-			'page': page,
-			'total_pages': total_pages,
-			'total': total,
-		})
+			total_pages = max(1, math.ceil(total / page_size)) if total else 1
+			if total and page > total_pages:
+				page = total_pages
+			start = (page - 1) * page_size
+			end = start + page_size
+			serializer = self.get_serializer(queryset[start:end], many=True)
+			return Response({
+				'results': serializer.data,
+				'page': page,
+				'total_pages': total_pages,
+				'total': total,
+			})
+		except Exception as e:
+			import logging
+			logger = logging.getLogger(__name__)
+			logger.error(f'Error in BookViewSet.list: {str(e)}', exc_info=True)
+			return Response({
+				'error': 'Kitaplar yüklenirken bir hata oluştu',
+				'detail': str(e)
+			}, status=500)
 
 	def perform_create(self, serializer):
 		"""
@@ -176,7 +186,14 @@ class BookViewSet(viewsets.ModelViewSet):
 		query = (request.query_params.get('q') or '').strip()
 		if not query:
 			return Response([])
-		qs = Book.objects.filter(Q(title__icontains=query) | Q(author__icontains=query)).order_by('title')[:8]
+		# Check if title_only parameter is set (for reservations page)
+		title_only = request.query_params.get('title_only', '').lower() in ('1', 'true', 'yes', 'on')
+		if title_only:
+			# For reservations: search by title starting with query
+			qs = Book.objects.filter(title__istartswith=query).order_by('title')[:8]
+		else:
+			# For books page: search by title or author starting with query
+			qs = Book.objects.filter(Q(title__istartswith=query) | Q(author__istartswith=query)).order_by('title')[:8]
 		data = [{'id': b.id, 'title': b.title, 'author': b.author} for b in qs]
 		return Response(data)
 

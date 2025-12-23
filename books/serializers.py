@@ -11,7 +11,7 @@ class ReviewSerializer(serializers.ModelSerializer):
 		read_only_fields = ['id', 'user_username', 'created_at']
 
 class BookSerializer(serializers.ModelSerializer):
-	average_rating = serializers.FloatField(read_only=True)
+	average_rating = serializers.SerializerMethodField()
 	cover_image = serializers.SerializerMethodField()
 
 	class Meta:
@@ -35,5 +35,35 @@ class BookSerializer(serializers.ModelSerializer):
 		]
 		read_only_fields = ['id', 'average_rating']
 
+	def get_average_rating(self, obj: Book) -> float:
+		# Use annotated effective_rating if available (from queryset annotation)
+		try:
+			effective_rating = getattr(obj, 'effective_rating', None)
+			if effective_rating is not None:
+				return float(effective_rating)
+		except (AttributeError, TypeError, ValueError):
+			pass
+		# Try avg_rating_db annotation if available
+		try:
+			avg_rating_db = getattr(obj, 'avg_rating_db', None)
+			if avg_rating_db is not None:
+				return float(avg_rating_db)
+		except (AttributeError, TypeError, ValueError):
+			pass
+		# Otherwise fall back to external_rating or 0.0
+		try:
+			external_rating = getattr(obj, 'external_rating', None)
+			if external_rating is not None:
+				return float(external_rating)
+		except (AttributeError, TypeError, ValueError):
+			pass
+		# Last resort: return 0.0
+		return 0.0
+
 	def get_cover_image(self, obj: Book) -> str:
-		return get_book_cover_image_url(obj.id)
+		try:
+			return get_book_cover_image_url(obj.id)
+		except Exception:
+			# Return fallback image if there's any error
+			from django.templatetags.static import static
+			return static('images/library-hero.webp')

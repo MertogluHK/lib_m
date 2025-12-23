@@ -4,15 +4,16 @@
 	<meta charset="UTF-8" />
 	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 	<title>{% block title %}LIB-M{% endblock %}</title>
+	<link rel="icon" type="image/svg+xml" href="/static/favicon.svg" />
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700;800&display=swap" rel="stylesheet">
+	<link rel="stylesheet" href="/static/css/styles.css" />
 	<script src="https://cdn.tailwindcss.com"></script>
 	<script>
 		// Tailwind dark mode via class
 		tailwind.config = { theme: { extend: {} }, darkMode: 'class' };
 	</script>
-	<link rel="preconnect" href="https://fonts.googleapis.com">
-	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-	<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700;800&display=swap" rel="stylesheet">
-	<link rel="stylesheet" href="/static/css/styles.css" />
 </head>
 <body class="min-h-full bg-gray-50 text-gray-900 dark:bg-gray-900 dark:text-gray-100">
 	<header class="border-b border-gray-200 dark:border-gray-800 bg-white/70 dark:bg-gray-900/70 backdrop-blur sticky top-0 z-10">
@@ -26,7 +27,7 @@
 					<a href="/" class="px-3 py-2 rounded hover:bg-gray-100 dark:hover:bg-gray-800">Ana Sayfa</a>
 					<a href="/books/" class="px-3 py-2 rounded hover:bg-gray-100 dark:hover:bg-gray-800">Kitaplar</a>
 					<a href="/community/" class="px-3 py-2 rounded hover:bg-gray-100 dark:hover:bg-gray-800">Topluluk</a>
-					<a href="/profile/" class="px-3 py-2 rounded hover:bg-gray-100 dark:hover:bg-gray-800">Profil</a>
+					<a href="/profile/" id="nav-profile" class="px-3 py-2 rounded hover:bg-gray-100 dark:hover:bg-gray-800">Profil</a>
 				</nav>
 				<div class="flex items-center gap-2">
 					<button id="theme-toggle" class="px-3 py-2 rounded border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800" title="Tema">
@@ -42,14 +43,31 @@
 	<main class="mx-auto max-w-6xl px-2 py-6">
 		{% block content %}{% endblock %}
 	</main>
-	<footer class="mx-auto max-w-6xl px-2 py-8 text-sm text-gray-500 dark:text-gray-400">
-		© {{ now|date:'Y' }} LIB-M
-	</footer>
 	<div id="toast-root" class="fixed bottom-4 right-4 z-50 space-y-2"></div>
+	{% include 'components/footer/footer.html' %}
+	
+	<!-- Login Required Modal -->
+	<div id="loginRequiredModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+		<div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-sm w-full mx-4">
+			<div class="p-6">
+				<h2 class="text-xl font-bold text-gray-900 dark:text-white mb-2">Giriş Yapmanız Gerekiyor</h2>
+				<p class="text-gray-600 dark:text-gray-400 mb-6">Rezervasyon oluşturmak için lütfen giriş yapınız.</p>
+				<div class="flex gap-3">
+					<button id="loginModalCancel" class="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 font-medium transition">
+						Tamam
+					</button>
+					<button id="loginModalGo" class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition">
+						Giriş Yap
+					</button>
+				</div>
+			</div>
+		</div>
+	</div>
+	
 	{% block reserve_cta %}
-	<a href="/reservations/" class="fixed bottom-6 right-6 z-40 inline-flex items-center gap-2 rounded-full bg-orange-500 text-white px-5 py-3 shadow-lg hover:bg-orange-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-500 dark:bg-orange-500 dark:hover:bg-orange-400" aria-label="Rezervasyon oluştur">
+	<button id="reserveCta" class="fixed bottom-6 right-6 z-40 inline-flex items-center gap-2 rounded-full bg-orange-500 text-white px-5 py-3 shadow-lg hover:bg-orange-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-500 dark:bg-orange-500 dark:hover:bg-orange-400" aria-label="Rezervasyon oluştur">
 		Rezervasyon Oluştur
-	</a>
+	</button>
 	{% endblock %}
 	<script src="/static/js/app.js"></script>
 	{% block scripts %}{% endblock %}

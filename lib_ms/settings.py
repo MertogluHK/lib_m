@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/5.0/ref/settings/
 
 from pathlib import Path
 import os
+from datetime import timedelta
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -26,7 +27,9 @@ SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'dev-insecure-secret')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv('DJANGO_DEBUG', '1') == '1'
 
-ALLOWED_HOSTS = os.getenv('DJANGO_ALLOWED_HOSTS', '').split(',') if os.getenv('DJANGO_ALLOWED_HOSTS') else []
+# Allow development server and test server
+default_hosts = ['localhost', '127.0.0.1', 'testserver']
+ALLOWED_HOSTS = os.getenv('DJANGO_ALLOWED_HOSTS', ','.join(default_hosts)).split(',') if os.getenv('DJANGO_ALLOWED_HOSTS') else default_hosts
 
 
 # Application definition
@@ -154,6 +157,11 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.IsAuthenticatedOrReadOnly',
     ),
+}
+
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
 }
 
 # CORS

@@ -15,7 +15,8 @@ class IsOwnerOrReadOnly(permissions.BasePermission):
 	def has_object_permission(self, request, view, obj):
 		if request.method in permissions.SAFE_METHODS:
 			return True
-		return obj.user == request.user
+		# Sahibi veya admin/staff kullanıcılar düzenleyebilir/silebilir
+		return obj.user == request.user or request.user.is_staff
 
 class CommunityPostViewSet(viewsets.ModelViewSet):
 	queryset = CommunityPost.objects.select_related('user', 'book').prefetch_related('comments').all()
@@ -77,8 +78,8 @@ class CommunityPostViewSet(viewsets.ModelViewSet):
 		except CommunityComment.DoesNotExist:
 			return Response({'detail': 'Yorum bulunamadı'}, status=status.HTTP_404_NOT_FOUND)
 		
-		# Check if user owns the comment
-		if comment.user != request.user:
+		# Sahibi veya admin/staff kullanıcılar düzenleyebilir/silebilir
+		if comment.user != request.user and not request.user.is_staff:
 			return Response({'detail': 'Bu yorumu düzenleme yetkiniz yok'}, status=status.HTTP_403_FORBIDDEN)
 		
 		if request.method == 'DELETE':

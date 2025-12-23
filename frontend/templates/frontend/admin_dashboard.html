@@ -19,6 +19,7 @@
 			<button id="admin-tab-stock" class="px-3 py-1.5 rounded-full text-sm font-medium bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200">Stoğu Yönet</button>
 			<button id="admin-tab-users" class="px-3 py-1.5 rounded-full text-sm font-medium bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200">Kullanıcıları Yönet</button>
 			<button id="admin-tab-reservations" class="px-3 py-1.5 rounded-full text-sm font-medium bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200">Rezervasyonları Görüntüle</button>
+			<button id="admin-tab-community" class="px-3 py-1.5 rounded-full text-sm font-medium bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200">Topluluk</button>
 		</div>
 	</header>
 
@@ -139,12 +140,27 @@
 						<th class="py-2 pr-3">#</th>
 						<th class="py-2 pr-3">Kullanıcı</th>
 						<th class="py-2 pr-3">Kitap</th>
+						<th class="py-2 pr-3">Alınacağı Tarih</th>
+						<th class="py-2 pr-3">İade Tarihi</th>
+						<th class="py-2 pr-3">Alım Tarihi</th>
 						<th class="py-2 pr-3">Durum</th>
 						<th class="py-2 pr-3">İşlemler</th>
 					</tr>
 				</thead>
 				<tbody id="admin-reservations-body"></tbody>
 			</table>
+		</div>
+	</article>
+
+	<article id="admin-section-community" class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6 space-y-4 hidden">
+		<div class="flex items-center justify-between">
+			<div>
+				<h2 class="text-2xl font-semibold">Topluluk Yönetimi</h2>
+			</div>
+			<button id="admin-refresh-community" class="text-sm px-3 py-1 rounded border border-gray-300 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800">Yenile</button>
+		</div>
+		<div class="space-y-2" id="admin-community-list">
+			<!-- Dropdown posts will be rendered here -->
 		</div>
 	</article>
 </section>
@@ -178,10 +194,13 @@ const tabAdd = document.getElementById('admin-tab-add');
 const tabStock = document.getElementById('admin-tab-stock');
 const tabUsers = document.getElementById('admin-tab-users');
 const tabRes = document.getElementById('admin-tab-reservations');
+const tabCommunity = document.getElementById('admin-tab-community');
 const sectionAdd = document.getElementById('admin-section-add');
 const sectionStock = document.getElementById('admin-section-stock');
 const sectionUsers = document.getElementById('admin-section-users');
 const sectionRes = document.getElementById('admin-section-reservations');
+const sectionCommunity = document.getElementById('admin-section-community');
+const communityBody = document.getElementById('admin-community-body');
 
 async function ensureAdmin(){
 	try{
@@ -205,7 +224,7 @@ async function ensureAdmin(){
 }
 
 function setActiveTab(target){
-	const tabs = [tabAdd, tabStock, tabUsers, tabRes];
+	const tabs = [tabAdd, tabStock, tabUsers, tabRes, tabCommunity];
 	tabs.forEach(btn => {
 		if(!btn) return;
 		const isActive = btn === target;
@@ -220,12 +239,14 @@ function setActiveTab(target){
 	if(sectionStock) sectionStock.classList.toggle('hidden', target !== tabStock);
 	if(sectionUsers) sectionUsers.classList.toggle('hidden', target !== tabUsers);
 	if(sectionRes) sectionRes.classList.toggle('hidden', target !== tabRes);
+	if(sectionCommunity) sectionCommunity.classList.toggle('hidden', target !== tabCommunity);
 }
 
 if(tabAdd) tabAdd.addEventListener('click', (e)=>{ e.preventDefault(); setActiveTab(tabAdd); });
 if(tabStock) tabStock.addEventListener('click', (e)=>{ e.preventDefault(); setActiveTab(tabStock); });
 if(tabUsers) tabUsers.addEventListener('click', (e)=>{ e.preventDefault(); setActiveTab(tabUsers); });
 if(tabRes) tabRes.addEventListener('click', (e)=>{ e.preventDefault(); setActiveTab(tabRes); });
+if(tabCommunity) tabCommunity.addEventListener('click', (e)=>{ e.preventDefault(); setActiveTab(tabCommunity); });
 
 function renderBooks(books, highlightId = null){
 	if(!books.length){
@@ -691,20 +712,28 @@ usersBody.addEventListener('click', async (e) => {
 	}
 });
 
+const STATUS_LABELS = {
+	'PENDING': 'Beklemede',
+	'PICKED_UP': 'Teslim Alındı',
+	'CANCELLED': 'İptal Edildi',
+	'RETURNED': 'İade Edildi',
+	'EXPIRED': 'Süresi Doldu'
+};
+
 function statusColor(status){
 	switch(status){
-		case 'PENDING': return 'bg-yellow-100 text-yellow-700';
-		case 'PICKED_UP': return 'bg-blue-100 text-blue-700';
-		case 'RETURNED': return 'bg-green-100 text-green-700';
-		case 'CANCELLED': return 'bg-red-100 text-red-700';
-		default: return 'bg-gray-100 text-gray-700';
+		case 'PENDING': return 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400';
+		case 'PICKED_UP': return 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400';
+		case 'RETURNED': return 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400';
+		case 'CANCELLED': return 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400';
+		default: return 'bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-400';
 	}
 }
 
 function renderReservations(reservations){
 	if(!reservationsBody) return;
 	if(!reservations.length){
-		reservationsBody.innerHTML = `<tr><td colspan="5" class="py-4 text-center text-gray-500">Rezervasyon bulunamadı.</td></tr>`;
+		reservationsBody.innerHTML = `<tr><td colspan="8" class="py-4 text-center text-gray-500">Rezervasyon bulunamadı.</td></tr>`;
 		return;
 	}
 	reservationsBody.innerHTML = reservations.map(item => `
@@ -712,8 +741,11 @@ function renderReservations(reservations){
 			<td class="py-2 pr-3 font-semibold">#${item.id}</td>
 			<td class="py-2 pr-3">${item.user_username || '-'}</td>
 			<td class="py-2 pr-3">${item.book_title || '-'}</td>
+			<td class="py-2 pr-3">${item.pickup_date ? new Date(item.pickup_date).toLocaleDateString('tr-TR', { year: 'numeric', month: 'short', day: 'numeric' }) : '-'}</td>
+			<td class="py-2 pr-3">${item.return_date ? new Date(item.return_date).toLocaleDateString('tr-TR', { year: 'numeric', month: 'short', day: 'numeric' }) : '-'}</td>
+			<td class="py-2 pr-3">${item.picked_up_at ? new Date(item.picked_up_at).toLocaleDateString('tr-TR', { year: 'numeric', month: 'short', day: 'numeric' }) : '-'}</td>
 			<td class="py-2 pr-3">
-				<span class="inline-flex px-2 py-1 rounded-full text-xs ${statusColor(item.status)}">${item.status}</span>
+				<span class="inline-flex px-2 py-1 rounded-full text-xs ${statusColor(item.status)}">${STATUS_LABELS[item.status] || item.status}</span>
 			</td>
 			<td class="py-2 pr-3 flex flex-wrap gap-2">${reservationActions(item)}</td>
 		</tr>
@@ -724,7 +756,7 @@ async function loadReservations(){
 	if(!reservationsBody) return;
 	const res = await window.libmApi('/api/reservations/', { silent401: true });
 	if(!res.ok){
-		reservationsBody.innerHTML = `<tr><td colspan="5" class="py-4 text-center text-red-500">Rezervasyonlar yüklenemedi.</td></tr>`;
+		reservationsBody.innerHTML = `<tr><td colspan="8" class="py-4 text-center text-red-500">Rezervasyonlar yüklenemedi.</td></tr>`;
 		return;
 	}
 	const data = await res.json();
@@ -755,6 +787,137 @@ if(reservationsBody){
 	});
 }
 
+function renderCommunity(posts){
+	const communityList = document.getElementById('admin-community-list');
+	if(!communityList) return;
+	if(!posts.length){
+		communityList.innerHTML = `<div class="py-8 text-center text-gray-500">Topluluk gönderisi bulunamadı.</div>`;
+		return;
+	}
+	communityList.innerHTML = posts.map(post => {
+		const stars = '★'.repeat(post.rating || 0) + '☆'.repeat(5 - (post.rating || 0));
+		const postId = `community-post-${post.id}`;
+		const authorName = post.user_username || post.author?.username || 'Anonim';
+		const bookTitle = post.book_title || post.book?.title || '-';
+		const comments = post.comments || [];
+		const commentsHtml = comments.length > 0 
+			? `<div class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 space-y-2">
+				<p class="font-semibold text-sm text-gray-700 dark:text-gray-300">Yorumlar (${comments.length})</p>
+				${comments.map(comment => `
+					<div class="bg-gray-100 dark:bg-gray-800 p-2 rounded text-xs space-y-1">
+						<div class="flex items-start justify-between">
+							<div class="flex-1">
+								<p class="font-medium text-gray-900 dark:text-gray-100">${comment.user_username}</p>
+								<p class="text-gray-700 dark:text-gray-300">${comment.content}</p>
+								<p class="text-gray-500 text-xs">${new Date(comment.created_at).toLocaleDateString('tr-TR')}</p>
+							</div>
+							<button data-comment-delete="${comment.id}" class="ml-2 px-2 py-1 rounded bg-red-500 text-white hover:bg-red-600 text-xs whitespace-nowrap">Sil</button>
+						</div>
+					</div>
+				`).join('')}
+			</div>`
+			: '';
+		
+		return `
+		<div class="border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden">
+			<button class="w-full community-dropdown-toggle px-4 py-3 bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-between transition" data-post-id="${post.id}">
+				<div class="flex items-center gap-4 flex-1 text-left">
+					<span class="font-medium text-gray-900 dark:text-gray-100 min-w-max">${authorName}</span>
+					<span class="text-gray-600 dark:text-gray-400 text-sm min-w-max">${bookTitle}</span>
+					<span class="text-yellow-500 text-sm min-w-max">${stars}</span>
+				</div>
+				<span class="text-gray-400 ml-2">▼</span>
+			</button>
+			<div class="community-dropdown-content hidden bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800" data-post-id="${post.id}">
+				<div class="px-4 py-3 space-y-2">
+					<p class="text-sm text-gray-700 dark:text-gray-300">${post.content}</p>
+					<p class="text-xs text-gray-500 pt-2">${new Date(post.created_at).toLocaleDateString('tr-TR')}</p>
+					${commentsHtml}
+					<button data-post-delete="${post.id}" class="mt-2 px-3 py-1 rounded bg-red-600 text-white text-xs hover:bg-red-700">Sil</button>
+				</div>
+			</div>
+		</div>
+	`;
+	}).join('');
+	
+	// Add dropdown toggle listeners
+	const toggles = document.querySelectorAll('.community-dropdown-toggle');
+	toggles.forEach(toggle => {
+		toggle.addEventListener('click', () => {
+			const postId = toggle.dataset.postId;
+			const content = document.querySelector(`.community-dropdown-content[data-post-id="${postId}"]`);
+			if(content){
+				const isHidden = content.classList.contains('hidden');
+				// Close all other dropdowns
+				document.querySelectorAll('.community-dropdown-content').forEach(el => el.classList.add('hidden'));
+				document.querySelectorAll('.community-dropdown-toggle').forEach(el => el.classList.remove('bg-gray-100', 'dark:bg-gray-700'));
+				// Toggle current
+				if(isHidden){
+					content.classList.remove('hidden');
+					toggle.classList.add('bg-gray-100', 'dark:bg-gray-700');
+				}
+			}
+		});
+	});
+}
+
+async function loadCommunity(){
+	const communityList = document.getElementById('admin-community-list');
+	if(!communityList) return;
+	const res = await window.libmApi('/api/community/posts/?page_size=100', { silent401: true });
+	if(!res.ok){
+		communityList.innerHTML = `<div class="py-8 text-center text-red-500">Topluluk gönderileri yüklenemedi.</div>`;
+		return;
+	}
+	const data = await res.json();
+	const list = Array.isArray(data) ? data : (data.results || []);
+	renderCommunity(list);
+}
+
+const communityList = document.getElementById('admin-community-list');
+if(communityList){
+	communityList.addEventListener('click', async (e) => {
+		// Post silme
+		const postDeleteBtn = e.target.closest('button[data-post-delete]');
+		if(postDeleteBtn){
+			const postId = postDeleteBtn.dataset.postDelete;
+			if(!confirm('Bu gönderiyi silmek istediğinize emin misiniz?')){
+				return;
+			}
+			const res = await window.libmApi(`/api/community/posts/${postId}/`, { method:'DELETE', silent401: true });
+			if(res.ok){
+				window.showToast('Gönderi silindi', 'success');
+				loadCommunity();
+			}else{
+				const data = await res.json();
+				window.showToast(data.detail || 'Gönderi silinemedi', 'error');
+			}
+			return;
+		}
+		
+		// Yorum silme
+		const commentDeleteBtn = e.target.closest('button[data-comment-delete]');
+		if(commentDeleteBtn){
+			const commentId = commentDeleteBtn.dataset.commentDelete;
+			if(!confirm('Bu yorumu silmek istediğinize emin misiniz?')){
+				return;
+			}
+			const res = await window.libmApi(`/api/community/comments/${commentId}/`, { method:'DELETE', silent401: true });
+			if(res.ok){
+				window.showToast('Yorum silindi', 'success');
+				loadCommunity();
+			}else{
+				const data = await res.json();
+				window.showToast(data.detail || 'Yorum silinemedi', 'error');
+			}
+		}
+	});
+}
+
+if(document.getElementById('admin-refresh-community')){
+	document.getElementById('admin-refresh-community').addEventListener('click', (e)=>{ e.preventDefault(); loadCommunity(); });
+}
+
 if(document.getElementById('admin-refresh-reservations')){
 	document.getElementById('admin-refresh-reservations').addEventListener('click', (e)=>{ e.preventDefault(); loadReservations(); });
 }
@@ -772,6 +935,7 @@ if(document.getElementById('admin-refresh-users')){
 		loadBooks();
 		loadUsers();
 		loadReservations();
+		loadCommunity();
 		setActiveTab(tabAdd);
 	}
 })();

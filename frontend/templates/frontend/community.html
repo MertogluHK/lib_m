@@ -171,14 +171,16 @@ async function loadPosts() {
 		return;
 	}
 	const data = await res.json();
-	if (data.length === 0) {
+	const posts = Array.isArray(data.results) ? data.results : (Array.isArray(data) ? data : []);
+	if (posts.length === 0) {
 		list.innerHTML = '<p class="text-gray-500 dark:text-gray-400">Henüz paylaşım yok.</p>';
 		return;
 	}
 	const hasToken = !!localStorage.getItem('access');
 	const currentUser = hasToken ? await getCurrentUsername() : null;
+	const isAdmin = hasToken ? await isCurrentUserAdmin() : false;
 	
-	list.innerHTML = data.map(post => {
+	list.innerHTML = posts.map(post => {
 		let ratingDisplay = '';
 		if (post.rating) {
 			const filledStars = '★'.repeat(post.rating);
@@ -186,7 +188,8 @@ async function loadPosts() {
 			ratingDisplay = `<span class="text-yellow-400 text-sm ml-2">${filledStars}${emptyStars}</span>`;
 		}
 		const isOwner = currentUser && post.user_username === currentUser;
-		const deleteBtn = isOwner ? `<button onclick="event.stopPropagation(); deletePost(${post.id})" class="text-red-600 hover:text-red-700 text-sm">Sil</button>` : '';
+		const canDelete = isOwner || isAdmin;
+		const deleteBtn = canDelete ? `<button onclick="event.stopPropagation(); deletePost(${post.id})" class="text-red-600 hover:text-red-700 text-sm">Sil</button>` : '';
 		const bookTitle = post.book_title || 'Kitap adı yok';
 		return `
 		<article class="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4 cursor-pointer hover:shadow-md transition-shadow" onclick="showPostDetail(${post.id})">
@@ -220,6 +223,17 @@ async function getCurrentUsername() {
 	return null;
 }
 
+async function isCurrentUserAdmin() {
+	try {
+		const res = await window.libmApi('/api/users/me/', { silent401: true });
+		if (res.ok) {
+			const data = await res.json();
+			return data.is_staff || data.is_superuser;
+		}
+	} catch(e) {}
+	return false;
+}
+
 // Load my posts
 async function loadMyPosts() {
 	const res = await window.libmApi('/api/community/posts/my_posts/', { silent401: true });
@@ -229,11 +243,12 @@ async function loadMyPosts() {
 		return;
 	}
 	const data = await res.json();
-	if (data.length === 0) {
+	const posts = Array.isArray(data.results) ? data.results : (Array.isArray(data) ? data : []);
+	if (posts.length === 0) {
 		list.innerHTML = '<p class="text-gray-500 dark:text-gray-400">Henüz konuşma başlatmadınız.</p>';
 		return;
 	}
-	list.innerHTML = data.map(post => {
+	list.innerHTML = posts.map(post => {
 		let ratingDisplay = '';
 		if (post.rating) {
 			const filledStars = '★'.repeat(post.rating);
@@ -276,11 +291,12 @@ async function loadMyComments() {
 		return;
 	}
 	const data = await res.json();
-	if (data.length === 0) {
+	const comments = Array.isArray(data.results) ? data.results : (Array.isArray(data) ? data : []);
+	if (comments.length === 0) {
 		list.innerHTML = '<p class="text-gray-500 dark:text-gray-400">Henüz yorum yapmadınız.</p>';
 		return;
 	}
-	list.innerHTML = data.map(comment => `
+	list.innerHTML = comments.map(comment => `
 		<article class="rounded-lg border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800 p-3">
 			<header class="flex items-center justify-between mb-2">
 				<div>
@@ -371,16 +387,30 @@ async function loadComments(postId) {
 	}
 	const hasToken = !!localStorage.getItem('access');
 	const currentUser = hasToken ? await getCurrentUsername() : null;
+	const isAdmin = hasToken ? await isCurrentUserAdmin() : false;
 	
 	list.innerHTML = data.map(comment => {
 		const isOwner = currentUser && comment.user_username === currentUser;
 		const escapedContent = (comment.content || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\n/g, '\\n').replace(/\r/g, '');
-		const editDeleteBtns = isOwner ? `
-			<div class="flex gap-2 mt-2">
-				<button onclick="editComment(${postId}, ${comment.id}, '${escapedContent}')" class="text-xs px-2 py-1 rounded border border-blue-300 dark:border-blue-700 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900">Düzenle</button>
-				<button onclick="deleteComment(${postId}, ${comment.id})" class="text-xs px-2 py-1 rounded border border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900">Sil</button>
-			</div>
-		` : '';
+		
+		let editDeleteBtns = '';
+		if (isOwner) {
+			// Sahibi: düzenle ve sil
+			editDeleteBtns = `
+				<div class="flex gap-2 mt-2">
+					<button onclick="editComment(${postId}, ${comment.id}, '${escapedContent}')" class="text-xs px-2 py-1 rounded border border-blue-300 dark:border-blue-700 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900">Düzenle</button>
+					<button onclick="deleteComment(${postId}, ${comment.id})" class="text-xs px-2 py-1 rounded border border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900">Sil</button>
+				</div>
+			`;
+		} else if (isAdmin) {
+			// Admin: sadece sil
+			editDeleteBtns = `
+				<div class="flex gap-2 mt-2">
+					<button onclick="deleteComment(${postId}, ${comment.id})" class="text-xs px-2 py-1 rounded border border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900">Sil</button>
+				</div>
+			`;
+		}
+		
 		return `
 		<article class="rounded-lg border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800 p-3" id="comment-${comment.id}">
 			<header class="flex items-center justify-between mb-2">

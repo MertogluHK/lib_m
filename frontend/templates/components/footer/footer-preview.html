@@ -1,0 +1,210 @@
+<!--
+LIB-M Footer Preview Page
+============================
+Bu dosya footer tasarımının önizlemesi için kullanılır.
+Üretim ortamında kullanılmaz - salt geliştirme amaçlıdır.
+
+KULLANIM:
+- Tarayıcıda footer-preview.html açarak tasarımı görün
+- CSS ve HTML değişikliklerini test edin
+- footer.html ve footer-minimal.html versiyonlarıyla karşılaştırın
+
+ÖNEMLİ: Bu dosya base.html içinde include edilmemektedir.
+-->
+
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>LIB-M Footer Preview</title>
+	<script src="https://cdn.tailwindcss.com"></script>
+	<style>
+		body {
+			font-family: 'Space Grotesk', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+		}
+		footer a {
+			transition: color 0.2s ease-in-out;
+		}
+		footer a:hover {
+			color: rgb(37, 99, 235);
+		}
+	</style>
+</head>
+<body class="bg-gray-50">
+	<div class="min-h-screen flex flex-col">
+		<!-- Dummy Content -->
+		<div class="flex-1 mx-auto max-w-6xl px-4 py-12 w-full">
+			<h1 class="text-4xl font-bold mb-4">LIB-M Footer Preview</h1>
+			<p class="text-gray-600 mb-6">Projede kullanılan footer'ın önizlemesi aşağıda görülmektedir.</p>
+			
+			<div class="bg-white p-6 rounded-lg shadow">
+				<h2 class="text-2xl font-bold mb-4">Sayfa İçeriği</h2>
+				<p class="text-gray-700 leading-relaxed">
+					Lorem ipsum dolor sit amet, consectetur adipiscing elit. 
+					Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. 
+					Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris 
+					nisi ut aliquip ex ea commodo consequat.
+				</p>
+			</div>
+		</div>
+
+		<!-- Footer Starts Here -->
+		<footer class="border-t border-gray-200 bg-white">
+			<div class="mx-auto max-w-6xl px-4 py-12">
+				<!-- Main Footer Grid -->
+				<div class="grid grid-cols-1 md:grid-cols-5 gap-8 mb-8">
+					<!-- Popular Brands Section -->
+					<div>
+						<h3 class="font-bold text-gray-900 mb-4">Popüler Yazarlar</h3>
+						<ul class="space-y-2 text-sm text-gray-600">
+							<li><a href="#" class="hover:text-blue-600">George Orwell</a></li>
+							<li><a href="#" class="hover:text-blue-600">Haruki Murakami</a></li>
+							<li><a href="#" class="hover:text-blue-600">Jane Austen</a></li>
+							<li><a href="#" class="hover:text-blue-600">Paulo Coelho</a></li>
+							<li><a href="#" class="hover:text-blue-600">Orhan Pamuk</a></li>
+							<li><a href="#" class="hover:text-blue-600">Ahmet Ümit</a></li>
+							<li><a href="#" class="font-semibold text-gray-700">Tüm Yazarlar</a></li>
+						</ul>
+					</div>
+
+					<!-- Popular Categories Section -->
+					<div>
+						<h3 class="font-bold text-gray-900 mb-4">Popüler Kategoriler</h3>
+						<ul class="space-y-2 text-sm text-gray-600">
+							<li><a href="#" class="hover:text-blue-600">Edebiyat</a></li>
+							<li><a href="#" class="hover:text-blue-600">Fantastik</a></li>
+							<li><a href="#" class="hover:text-blue-600">Bilim Kurgu</a></li>
+							<li><a href="#" class="hover:text-blue-600">Gizem</a></li>
+							<li><a href="#" class="hover:text-blue-600">Tarih</a></li>
+							<li><a href="#" class="hover:text-blue-600">Öz Geliştirme</a></li>
+							<li><a href="#" class="font-semibold text-gray-700">Tüm Kategoriler</a></li>
+						</ul>
+					</div>
+
+					<!-- Pages Section -->
+					<div>
+						<h3 class="font-bold text-gray-900 mb-4">Sayfalar</h3>
+						<ul class="space-y-2 text-sm text-gray-600">
+							<li><a href="#" class="hover:text-blue-600">Ana Sayfa</a></li>
+							<li><a href="#" class="hover:text-blue-600">Kitaplar</a></li>
+							<li><a href="#" class="hover:text-blue-600">Topluluk</a></li>
+							<li><a href="#" class="hover:text-blue-600">Rezervasyonlarım</a></li>
+							<li><a href="#" class="hover:text-blue-600">Profilim</a></li>
+							<li><a href="#" class="hover:text-blue-600">Üye Ol</a></li>
+						</ul>
+					</div>
+
+					<!-- Help Section -->
+					<div>
+						<h3 class="font-bold text-gray-900 mb-4">Yardım ve Destek</h3>
+						<ul class="space-y-2 text-sm text-gray-600">
+							<li><a href="#" class="hover:text-blue-600">SSS</a></li>
+							<li><a href="#" class="hover:text-blue-600">İletişim</a></li>
+							<li><a href="#" class="hover:text-blue-600">Kullanım Koşulları</a></li>
+							<li><a href="#" class="hover:text-blue-600">Gizlilik Politikası</a></li>
+							<li><a href="#" class="hover:text-blue-600">Çerez Politikası</a></li>
+							<li><a href="#" class="hover:text-blue-600">Bize Ulaşın</a></li>
+						</ul>
+					</div>
+
+					<!-- About Section -->
+					<div>
+						<h3 class="font-bold text-gray-900 mb-4">Hakkında</h3>
+						<ul class="space-y-2 text-sm text-gray-600">
+							<li><a href="#" class="hover:text-blue-600">LIB-M Hakkında</a></li>
+							<li><a href="#" class="hover:text-blue-600">Blog</a></li>
+							<li><a href="#" class="hover:text-blue-600">Basın</a></li>
+							<li><a href="#" class="hover:text-blue-600">Kariyer</a></li>
+							<li><a href="#" class="hover:text-blue-600">Bize Katılın</a></li>
+							<li><a href="#" class="hover:text-blue-600">İş Ortağı Ol</a></li>
+						</ul>
+					</div>
+				</div>
+
+				<!-- Divider -->
+				<div class="border-t border-gray-200 py-8"></div>
+
+				<!-- Bottom Section -->
+				<div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
+					<!-- Security Section -->
+					<div>
+						<h4 class="font-semibold text-gray-900 mb-3 text-sm">Güvenli Alışveriş</h4>
+						<div class="flex items-center gap-3 flex-wrap">
+							<div class="flex items-center justify-center w-10 h-10 rounded border border-gray-200 bg-gray-50">
+								<span class="text-lg">🔒</span>
+							</div>
+							<div class="flex items-center justify-center w-10 h-10 rounded border border-gray-200 bg-gray-50">
+								<span class="text-lg">✓</span>
+							</div>
+							<div class="flex items-center justify-center w-10 h-10 rounded border border-gray-200 bg-gray-50">
+								<span class="text-lg">🛡️</span>
+							</div>
+						</div>
+						<p class="text-xs text-gray-500 mt-3">Tüm işlemleriniz güvenli ve şifrelidir.</p>
+					</div>
+
+					<!-- Payment Methods -->
+					<div>
+						<h4 class="font-semibold text-gray-900 mb-3 text-sm">Ödeme Yöntemleri</h4>
+						<div class="flex items-center gap-2 flex-wrap">
+							<div class="h-6 px-2 border border-gray-200 rounded text-xs font-semibold bg-gray-50 flex items-center">Visa</div>
+							<div class="h-6 px-2 border border-gray-200 rounded text-xs font-semibold bg-gray-50 flex items-center">MC</div>
+							<div class="h-6 px-2 border border-gray-200 rounded text-xs font-semibold bg-gray-50 flex items-center">AMEX</div>
+							<div class="h-6 px-2 border border-gray-200 rounded text-xs font-semibold bg-gray-50 flex items-center">Bank</div>
+						</div>
+						<p class="text-xs text-gray-500 mt-3">Güvenli ödeme yöntemleri</p>
+					</div>
+
+					<!-- Social Media -->
+					<div>
+						<h4 class="font-semibold text-gray-900 mb-3 text-sm">Bizi Takip Edin</h4>
+						<div class="flex items-center gap-4">
+							<a href="#" class="inline-flex items-center justify-center w-10 h-10 rounded-full border border-gray-200 hover:bg-gray-100 transition">
+								📷
+							</a>
+							<a href="#" class="inline-flex items-center justify-center w-10 h-10 rounded-full border border-gray-200 hover:bg-gray-100 transition">
+								𝕏
+							</a>
+							<a href="#" class="inline-flex items-center justify-center w-10 h-10 rounded-full border border-gray-200 hover:bg-gray-100 transition">
+								👍
+							</a>
+							<a href="#" class="inline-flex items-center justify-center w-10 h-10 rounded-full border border-gray-200 hover:bg-gray-100 transition">
+								▶️
+							</a>
+						</div>
+					</div>
+				</div>
+
+				<!-- Final Footer Line -->
+				<div class="border-t border-gray-200 pt-6 flex flex-col md:flex-row items-center justify-between text-xs text-gray-500">
+					<p>&copy; 2025 LIB-M Kütüphane Yönetim Sistemi. Tüm hakları saklıdır.</p>
+					<div class="flex items-center gap-4 mt-4 md:mt-0">
+						<a href="#" class="hover:text-gray-700">Gizlilik</a>
+						<a href="#" class="hover:text-gray-700">Şartlar</a>
+						<a href="#" class="hover:text-gray-700">Çerezler</a>
+					</div>
+				</div>
+			</div>
+		</footer>
+	</div>
+
+	<script>
+		// Info banner
+		document.addEventListener('DOMContentLoaded', function() {
+			const banner = document.createElement('div');
+			banner.className = 'fixed bottom-4 right-4 bg-blue-600 text-white p-4 rounded-lg shadow-lg z-50';
+			banner.innerHTML = `
+				<p class="font-semibold mb-2">Footer Preview</p>
+				<p class="text-sm">Bu footer canlı projede kullanılmaktadır.</p>
+				<p class="text-xs mt-2 opacity-75">
+					<a href="http://localhost:8000" class="underline hover:opacity-50">
+						Canlı Uygulamaya Git →
+					</a>
+				</p>
+			`;
+			document.body.appendChild(banner);
+		});
+	</script>
+</body>
+</html>

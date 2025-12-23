@@ -72,8 +72,19 @@ async function loadBooks() {
     try{
     const params = buildQueryParams();
     const url = params ? `/api/books/?${params}` : '/api/books/';
+    // Books endpoint is public - libmApi will handle token refresh/removal automatically
     const res = await window.libmApi(url, { silent401: true });
-    if(!res.ok){ throw new Error('Liste alınamadı'); }
+    if(!res.ok){ 
+		const errorText = await res.text().catch(() => 'Bilinmeyen hata');
+		let errorMsg = 'Liste alınamadı';
+		try {
+			const errorData = JSON.parse(errorText);
+			errorMsg = errorData.detail || errorData.error || errorMsg;
+		} catch {
+			errorMsg = `HTTP ${res.status}: ${errorText}`;
+		}
+		throw new Error(errorMsg);
+	}
     const data = await res.json();
 	const books = Array.isArray(data.results) ? data.results : data;
 	const container = document.getElementById('books');
@@ -85,6 +96,7 @@ async function loadBooks() {
 	container.innerHTML = books.map(b => {
 		const coverUrl = b.cover_image || FALLBACK_IMAGE;
 		const stockText = (typeof b.stock !== 'undefined' && b.stock > 0) ? 'Stokta var' : 'Stok tükendi';
+		const avgRating = b.average_rating || 0;
 		return `
 		<a href="/books/${b.id}/" class="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 hover:shadow-lg transition flex flex-col gap-3 overflow-hidden h-full">
 			<div class="aspect-[2/3] bg-white dark:bg-gray-950 overflow-hidden flex items-center justify-center p-3">
@@ -93,7 +105,7 @@ async function loadBooks() {
 			<div class="p-4 flex flex-col gap-3 flex-1">
 				<h3 class="font-semibold text-lg leading-snug line-clamp-2 min-h-[3.25rem]">${b.title}</h3>
 				<div class="mt-auto flex items-center justify-between text-sm pt-1">
-					<span class="text-yellow-500">${stars(b.average_rating)}</span>
+					<span class="text-yellow-500">${stars(avgRating)}</span>
 					<span class="font-medium ${stockText === 'Stokta var' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}">${stockText}</span>
 				</div>
 			</div>
@@ -101,7 +113,14 @@ async function loadBooks() {
 		`;
 	}).join('');
 	renderPagination(data.page || currentFilters.page || 1, data.total_pages || 1);
-    }catch(e){ console.error(e); window.showToast('Kitaplar yüklenemedi', 'error'); }
+    }catch(e){ 
+		console.error('Kitaplar yüklenirken hata:', e);
+		const container = document.getElementById('books');
+		if(container) {
+			container.innerHTML = `<p class="text-red-500 dark:text-red-400">Kitaplar yüklenemedi: ${e.message || 'Bilinmeyen hata'}</p>`;
+		}
+		window.showToast(`Kitaplar yüklenemedi: ${e.message || 'Bilinmeyen hata'}`, 'error'); 
+	}
 }
 
 function renderPagination(page, totalPages){

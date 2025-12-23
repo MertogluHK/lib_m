@@ -4,13 +4,56 @@
 {% block content %}
 <h2 class="text-2xl font-semibold mb-4">Rezervasyon Oluştur</h2>
 <article class="rounded-xl border border-gray-200 dark:border-gray-800 p-6 bg-white dark:bg-gray-900">
-	<form id="res-init-form" class="grid md:grid-cols-3 gap-3">
-		<label class="block">Kitap Adı<input class="mt-1 w-full px-3 py-2 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800" name="book_query" placeholder="Örn: 1984" required /></label>
-		<label class="block">Gün (1-3)<input class="no-spin mt-1 w-full px-3 py-2 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800" name="pickup_deadline_days" type="number" min="1" max="3" required /></label>
-		<div class="md:col-span-3"><button class="px-4 py-2 rounded bg-blue-600 text-white" type="submit">Devam Et</button></div>
+	<form id="res-init-form" class="space-y-6">
+		<!-- 1. Kitap Seçimi -->
+		<label class="block">
+			<span class="block text-sm font-medium mb-2">Kitap Seçimi</span>
+			<div class="relative">
+				<input id="book-query-input" class="w-full px-3 py-2 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800" name="book_query" placeholder="Örn: 1984" autocomplete="off" required />
+				<div id="book-suggestions" class="hidden absolute left-0 right-0 mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-60 overflow-y-auto z-10"></div>
+			</div>
+		</label>
+
+		<!-- 2. Tarih Seçimi -->
+		<label class="block">
+			<span class="block text-sm font-medium mb-2">Kitabın Alınacağı Tarih</span>
+		<div class="relative cursor-pointer" id="pickup-date-wrapper">
+			<input 
+				id="pickup-date-input" 
+				class="w-full px-3 py-2.5 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 dark:text-white focus:border-blue-500 dark:focus:border-blue-400 focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-800 focus:outline-none transition-all duration-200 cursor-pointer" 
+				name="pickup_date"
+				type="date"
+				autocomplete="off"
+				required 
+			/>
+		</div>
+	</label>
+
+		<!-- 3. Gün Sayısı Seçimi -->
+		<label class="block">
+			<span class="block text-sm font-medium mb-2">Gün Sayısı</span>
+			<div class="relative">
+				<input 
+					id="days-input" 
+					class="w-full px-3 py-2 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 dark:text-white focus:border-blue-500 dark:focus:border-blue-400 focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-800 focus:outline-none transition-all duration-200" 
+					name="days" 
+					type="number" 
+					placeholder="Gün sayısı" 
+					min="1" 
+					max="30" 
+					value=""
+					required 
+				/>
+			</div>
+		</label>
+
+		<!-- Submit Butonu -->
+		<div class="pt-2">
+			<button class="w-full px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700 transition-colors" type="submit">Devam Et</button>
+		</div>
 	</form>
 </article>
-<div id="res-list" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-6"></div>
+<!-- Rezervasyonlar sadece profil sayfasında gösterilir -->
 
 <!-- Login Required Modal -->
 <div id="login-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
@@ -23,6 +66,34 @@
 	</div>
 </div>
 {% endblock %}
+{% block styles %}
+<style>
+/* Date input styling */
+#pickup-date-wrapper {
+	cursor: pointer;
+}
+
+#pickup-date-input {
+	cursor: pointer;
+	width: 100%;
+}
+
+input[type="date"] {
+	cursor: pointer;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator {
+	cursor: pointer;
+	padding: 4px;
+	margin-right: -8px;
+}
+
+/* Dark mode date input */
+.dark input[type="date"] {
+	color-scheme: dark;
+}
+</style>
+{% endblock %}
 {% block scripts %}
 <script>
 const STATUS_LABELS = {
@@ -33,16 +104,79 @@ const STATUS_LABELS = {
 	'EXPIRED': 'Süresi Doldu'
 };
 
+// Minimum tarih: bugün
+function setMinDate() {
+	const pickupDateInput = document.getElementById('pickup-date-input');
+	const pickupDateWrapper = document.getElementById('pickup-date-wrapper');
+	if (!pickupDateInput) return;
+	
+	const today = new Date();
+	const year = today.getFullYear();
+	const month = String(today.getMonth() + 1).padStart(2, '0');
+	const day = String(today.getDate()).padStart(2, '0');
+	const minDate = `${year}-${month}-${day}`;
+	
+	// Max tarih: bugün + 3 gün
+	const maxDate = new Date(today);
+	maxDate.setDate(maxDate.getDate() + 3);
+	const maxYear = maxDate.getFullYear();
+	const maxMonth = String(maxDate.getMonth() + 1).padStart(2, '0');
+	const maxDay = String(maxDate.getDate()).padStart(2, '0');
+	const maxDateStr = `${maxYear}-${maxMonth}-${maxDay}`;
+	
+	pickupDateInput.min = minDate;
+	pickupDateInput.max = maxDateStr;
+	pickupDateInput.value = minDate;
+	
+	// Wrapper'a tıklandığında input'u focus et ve takvim aç
+	if (pickupDateWrapper) {
+		pickupDateWrapper.addEventListener('click', function(e) {
+			e.preventDefault();
+			e.stopPropagation();
+			pickupDateInput.focus();
+			// Takvimi açmak için showPicker() kullan (modern tarayıcılarda)
+			if (pickupDateInput.showPicker) {
+				pickupDateInput.showPicker();
+			} else {
+				// Fallback: click() ve focus()
+				pickupDateInput.click();
+			}
+		});
+	}
+	
+	// Input'a tıklandığında da takvim aç
+	pickupDateInput.addEventListener('focus', function(e) {
+		if (this.showPicker) {
+			this.showPicker();
+		}
+	});
+}
+
+// Sayfa yüklendikten sonra çalıştır
+if (document.readyState === 'loading') {
+	document.addEventListener('DOMContentLoaded', setMinDate);
+} else {
+	setMinDate();
+}
 async function loadReservations() {
 	const res = await window.libmApi('/api/reservations/', { silent401: true });
 	const list = document.getElementById('res-list');
 	if (!res.ok) { list.innerHTML = ''; return; }
 	const data = await res.json();
-	if (!data.length) {
-		list.innerHTML = '<p class="text-gray-500 dark:text-gray-400">Henüz rezervasyon bulunmuyor.</p>';
+	const reservations = Array.isArray(data.results) ? data.results : (Array.isArray(data) ? data : []);
+	
+	// Aktif rezervasyonları filtrele (geçmiş statüsleri hariç tut)
+	const activeReservations = reservations.filter(r => 
+		r.status !== 'CANCELLED' && 
+		r.status !== 'RETURNED' && 
+		r.status !== 'EXPIRED'
+	);
+	
+	if (!activeReservations.length) {
+		list.innerHTML = '<p class="text-gray-500 dark:text-gray-400">Henüz aktif bir rezervasyon bulunmuyor.</p>';
 		return;
 	}
-	list.innerHTML = data.map(r => {
+	list.innerHTML = activeReservations.map(r => {
 		const actions = [];
 		if (r.status === 'PENDING') {
 			actions.push(`<button type="button" class="px-3 py-1.5 rounded bg-green-600 text-white" onclick="pickup(${r.id})">Teslim Al</button>`);
@@ -79,13 +213,99 @@ async function returnRes(id) {
 }
 
 const initForm = document.getElementById('res-init-form');
-const bookInput = initForm.querySelector('input[name="book_query"]');
+const bookInput = document.getElementById('book-query-input') || initForm.querySelector('input[name="book_query"]');
+const suggestionsBox = document.getElementById('book-suggestions');
 const urlParams = new URLSearchParams(window.location.search);
 const prefilledBook = urlParams.get('book');
 if (prefilledBook && bookInput) {
 	bookInput.value = prefilledBook;
 	bookInput.dataset.prefilled = '1';
 }
+
+let suggestionTimer = null;
+
+function hideSuggestions(){
+	if(suggestionsBox) {
+		suggestionsBox.classList.add('hidden');
+		suggestionsBox.innerHTML = '';
+	}
+}
+
+async function fetchBookSuggestions(term){
+	if(!term || term.length < 2){
+		hideSuggestions();
+		return;
+	}
+	try{
+		// Use title_only parameter to search only by book title, not author
+		const res = await window.libmApi(`/api/books/suggest/?q=${encodeURIComponent(term)}&title_only=1`, { silent401: true });
+		if(!res.ok){ hideSuggestions(); return; }
+		const data = await res.json();
+		if(!data.length){ hideSuggestions(); return; }
+		if(suggestionsBox) {
+			suggestionsBox.innerHTML = data.map(item => `
+				<button type="button" class="w-full text-left px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-800 border-b border-gray-100 dark:border-gray-800 last:border-b-0" data-title="${item.title.replace(/"/g, '&quot;')}" data-author="${(item.author || '').replace(/"/g, '&quot;')}">
+					<div class="font-medium">${item.title}</div>
+					${item.author ? `<div class="text-xs text-gray-500 dark:text-gray-400">${item.author}</div>` : ''}
+				</button>
+			`).join('');
+			suggestionsBox.classList.remove('hidden');
+		}
+	}catch(e){
+		hideSuggestions();
+	}
+}
+
+// Book input event listeners
+if(bookInput) {
+	bookInput.addEventListener('input', () => {
+		const term = bookInput.value.trim();
+		if(suggestionTimer) clearTimeout(suggestionTimer);
+		if(!term){
+			hideSuggestions();
+			return;
+		}
+		// Wait 300ms after user stops typing before fetching suggestions
+		suggestionTimer = setTimeout(() => fetchBookSuggestions(term), 300);
+	});
+
+	bookInput.addEventListener('focus', () => {
+		const term = bookInput.value.trim();
+		if(term && term.length >= 2) {
+			fetchBookSuggestions(term);
+		}
+	});
+
+	bookInput.addEventListener('blur', () => {
+		// Delay hiding to allow click on suggestion
+		setTimeout(() => hideSuggestions(), 200);
+	});
+
+	// Handle suggestion clicks
+	if(suggestionsBox) {
+		suggestionsBox.addEventListener('click', (e) => {
+			const btn = e.target.closest('button[data-title]');
+			if(!btn) return;
+			bookInput.value = btn.dataset.title;
+			hideSuggestions();
+		});
+	}
+
+	// Hide suggestions on Escape key
+	bookInput.addEventListener('keydown', (e) => {
+		if(e.key === 'Escape') {
+			hideSuggestions();
+		}
+	});
+}
+
+// Hide suggestions when clicking outside
+document.addEventListener('click', (e) => {
+	if(bookInput && suggestionsBox && !bookInput.contains(e.target) && !suggestionsBox.contains(e.target)) {
+		hideSuggestions();
+	}
+});
+
 initForm.addEventListener('submit', async (e) => {
 	e.preventDefault();
 	
@@ -102,9 +322,77 @@ initForm.addEventListener('submit', async (e) => {
 		window.showToast('Lütfen kitap adı girin', 'error');
 		return;
 	}
+
+	const pickupDate = fd.get('pickup_date');
+	if (!pickupDate) {
+		window.showToast('Lütfen kitabın alınacağı tarihi seçin', 'error');
+		return;
+	}
+
+	const days = parseInt(fd.get('days'));
+	if (!days || days < 1 || days > 30) {
+		window.showToast('Gün sayısı 1 ile 30 arasında olmalıdır', 'error');
+		return;
+	}
+
+	// Kitapları arayıp ID'sini bul
+	try {
+		const booksRes = await window.libmApi('/api/books/');
+		if (!booksRes.ok) {
+			window.showToast('Kitaplar yüklenemedi', 'error');
+			return;
+		}
+		const data = await booksRes.json();
+		const books = Array.isArray(data.results) ? data.results : (Array.isArray(data) ? data : []);
+		const foundBook = books.find(b => (b.title || '').toLowerCase().includes(bookName.toLowerCase()));
+		
+		if (!foundBook) {
+			window.showToast('Kitap bulunamadı', 'error');
+			return;
+		}
+
+		// Stok kullanılabilirliğini kontrol et
+		const availRes = await window.libmApi('/api/reservations/check_availability/', {
+			method: 'POST',
+			body: JSON.stringify({
+				book_id: foundBook.id,
+				pickup_date: pickupDate
+			})
+		});
+
+		const availData = await availRes.json();
+		
+		if (!availData.available && availData.next_available_date) {
+			// Stok yok ama alternatif tarih var
+			const nextDate = new Date(availData.next_available_date);
+			const nextDateStr = nextDate.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' });
+			const msg = availData.message + `\n\n💡 Alternatif olarak ${nextDateStr} tarihinden itibaren seçim yapabilirsiniz.`;
+			if (!confirm(msg + '\n\nAlternatif tarihe değiştirmek ister misiniz?')) {
+				return;
+			}
+			// Tarihi değiştir
+			const dateInput = document.getElementById('pickup-date-input');
+			dateInput.value = availData.next_available_date.split('T')[0];
+		} else if (!availData.available) {
+			window.showToast(availData.message || 'Bu tarihte kitap uygun değildir', 'error');
+			return;
+		}
+	} catch (err) {
+		console.error('Availability check hatası:', err);
+		// Hata olsa da devam et
+	}
+
+	// İade tarihini hesapla: alınma tarihi + gün sayısı
+	const pickupDateObj = new Date(pickupDate);
+	pickupDateObj.setHours(0, 0, 0, 0);
+	const returnDateObj = new Date(pickupDateObj);
+	returnDateObj.setDate(returnDateObj.getDate() + days);
+	const returnDate = returnDateObj.toISOString().split('T')[0];
+	
+	hideSuggestions();
 	const q = encodeURIComponent(bookName);
-	const d = Number(fd.get('pickup_deadline_days'));
-	window.location.href = `/payment/?q=${q}&d=${d}`;
+	const d = days;
+	window.location.href = `/payment/?q=${q}&d=${d}&return_date=${encodeURIComponent(returnDate)}&pickup_date=${encodeURIComponent(pickupDate)}`;
 });
 
 function showLoginModal() {

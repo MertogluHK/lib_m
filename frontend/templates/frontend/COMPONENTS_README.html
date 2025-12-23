@@ -1,0 +1,192 @@
+<!-- 
+FRONTEND COMPONENTS - Kullanım Rehberi
+======================================
+
+Bu belge, test dosyaları ve footer bileşenlerinin düzenleme ve kullanımı hakkında bilgi verir.
+
+## TEST DOSYALARI
+
+Her app'in tests.py dosyası vardır ve aşağıda organize edilmiştir:
+
+### books/tests.py
+- BookModelTests: Book model testleri
+- BookAPITests: API endpoints testleri (list, detail, search, suggest)
+
+### users/tests.py  
+- UserAuthenticationTests: Kullanıcı doğrulama ve JWT token testleri
+- UserAuthorizationTests: Yetkilendirme ve permission testleri
+- UserAPITests: User API endpoints testleri
+
+### reservations/tests.py
+- ReservationModelTests: Reservation model testleri
+- ReservationStateTransitionTests: Durum geçişleri (PENDING -> PICKED_UP -> RETURNED)
+- ReservationAPITests: Reservation API endpoints testleri
+- PickupDateTests: pickup_date field ve return_date hesaplama testleri
+
+### community/tests.py
+- CommunityPostTests: CommunityPost model ve API testleri
+- CommunityPostPermissionTests: Post permission kontrolleri (create, edit, delete)
+- CommunityCommentTests: CommunityComment model ve API testleri
+- CommunityModerationTests: Admin moderation testleri (post/comment silme)
+
+### frontend/tests.py
+- FrontendPageLoadTests: Sayfa yükleme ve rendering testleri
+- FrontendViewTests: Frontend view testleri (home, books, detail, profile, etc.)
+- FrontendIntegrationTests: Backend API'lerle entegrasyon testleri
+- FrontendTemplateTests: Template context ve data rendering testleri
+
+**Test Çalıştırma:**
+```bash
+python manage.py test                    # Tüm testleri çalıştır
+python manage.py test books              # Sadece books app testleri
+python manage.py test books.tests.BookModelTests  # Spesifik test sınıfı
+```
+
+---
+
+## FOOTER BİLEŞENLERİ
+
+Proje 3 footer versiyonu içerir:
+
+### 1. footer.html (Aktif Versiyon) ⭐
+- **Durumu:** Production'da kullanılır
+- **Eklendiği yer:** frontend/templates/frontend/base.html içinde include edilir
+- **Yapısı:** 5 sütunlu responsive grid
+  - Popüler Yazarlar
+  - Popüler Kategoriler  
+  - Sayfalar (navigation links)
+  - Yardım ve Destek
+  - Hakkında
+- **Ek özellikler:** 
+  - Güvenlik badgeleri (🔒 ✓ 🛡️)
+  - Ödeme yöntemleri logolari
+  - Sosyal medya ikonları (Instagram, Twitter, Facebook, YouTube)
+  - Dark mode desteği
+  - Copyright ve yasal bağlantılar
+
+**Satır sayısı:** 160 satır
+**Responsive:** Mobile (1 col) → Tablet (3 col) → Desktop (5 col)
+
+---
+
+### 2. footer-minimal.html (Alternatif Versiyon)
+- **Durumu:** İsteğe bağlı, test amaçlı
+- **Kullanım:** footer.html yerine base.html'de include edebilirsiniz
+- **Yapısı:** Tek satırda organize footer
+  - Sol: Branding + Copyright
+  - Orta: Hızlı sayfalar linksi
+  - Sağ: Sosyal medya ikonları
+  - Alt: Yasal bağlantılar
+- **Avantajları:**
+  - Daha kompakt ve hafif
+  - Minimal CSS footprint
+  - Hızlı sayfa yükleme
+- **Dezavantajları:**
+  - Daha az bilgi ve linksi
+  - Popüler yazarlar/kategoriler yok
+
+**Satır sayısı:** 52 satır
+**Responsive:** Mobile (yığılı) → Desktop (yan yana)
+
+**Kullanım Talimatı:**
+```html
+<!-- base.html'de footer.html yerine footer-minimal.html include edin -->
+{% include 'frontend/footer-minimal.html' %}
+```
+
+---
+
+### 3. footer-preview.html (Test Dosyası)
+- **Durumu:** Salt geliştirme ve test amaçlı
+- **Kullanım:** Tarayıcıda açarak footer tasarımını görün
+- **Yapısı:** Tam HTML sayfa + footer
+
+**NOT:** 
+- ⚠️ Production'da kullanılmaz
+- ⚠️ base.html'de include edilmez
+- ✅ Sadece CSS/HTML değişikliklerini test etmek için açılır
+
+**Test Yöntemi:**
+```bash
+# Django dev server çalışıyorsa
+http://localhost:8000/frontend/footer-preview.html  # (varsa route yoksa dosya açılır)
+
+# Veya doğrudan dosya açılır:
+frontend/templates/frontend/footer-preview.html
+```
+
+---
+
+## FOOTERLENDİRME KARŞILAŞTIRMASI
+
+| Özellik | footer.html | footer-minimal.html |
+|---------|------------|-------------------|
+| Popüler Yazarlar | ✅ | ❌ |
+| Popüler Kategoriler | ✅ | ❌ |
+| Sayfa Linkileri | ✅ | ✅ |
+| Yardım ve Destek | ✅ | ❌ |
+| Hakkında | ✅ | ❌ |
+| Sosyal Medya | ✅ | ✅ |
+| Güvenlik Badgeleri | ✅ | ❌ |
+| Ödeme Yöntemleri | ✅ | ❌ |
+| Satır Sayısı | 160 | 52 |
+| Dark Mode | ✅ | ✅ |
+| Mobile Responsive | ✅ | ✅ |
+
+---
+
+## FOOTER ÖZELLEŞTIRME TALIMATARI
+
+### Yazarlar Listesini Güncelleme
+`footer.html` line ~12-19'da yazarları değiştirin:
+```html
+<li><a href="/books/?author=George%20Orwell" ...>George Orwell</a></li>
+<!-- Yazarları değiştir -->
+```
+
+### Kategorileri Güncelleme
+`footer.html` line ~24-31'de kategorileri değiştirin:
+```html
+<li><a href="/books/?categories=Edebiyat" ...>Edebiyat</a></li>
+<!-- Kategorileri değiştir -->
+```
+
+### Sosyal Medya Linklerini Güncelleme
+Tüm footer dosyalarında sosyal medya URL'lerini güncelleyin:
+```html
+<a href="https://instagram.com/sizinkutuphanesi" ...>
+```
+
+### Dark Mode Ayarı
+Tüm footer'lar `dark:` Tailwind classes kullanır. 
+Görünüm otomatik olarak dark mode'a geçer.
+
+---
+
+## ÖNEMLİ NOTLAR
+
+1. **Footer Versiyonu Değiştirme:**
+   - `base.html`'de footer include kısmını değiştirin
+   - Şu anda: `{% include 'frontend/footer-minimal.html' %}` veya `footer.html`
+
+2. **Yeni Footer Oluşturma:**
+   - Yeni dosya: `frontend/templates/frontend/footer-custom.html`
+   - `base.html`'de include edin
+
+3. **Test Dosyaları:**
+   - Hala geliştirilmektedir - test yazma planlanıyor
+   - Placeholder test class'ları vardır
+
+4. **Responsive Kontrol:**
+   - footer.html: md breakpoint'de (768px+) grid değişir
+   - footer-minimal.html: md breakpoint'de flex yönü değişir
+
+---
+
+**Son Güncelleme:** 23 Aralık 2025
+**Durum:** Aktif ve test edildi
+-->
+
+# Frontend Bileşenleri Rehberi
+
+Detaylı bilgi için yukarıdaki comments bölümünü okuyun.

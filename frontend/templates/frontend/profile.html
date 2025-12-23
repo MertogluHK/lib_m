@@ -43,18 +43,22 @@
 
 		<article class="md:col-span-2 space-y-6">
 			<div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6 space-y-3">
-				<div class="flex items-center justify-between">
-					<h2 class="text-xl font-semibold">Başlattığım Konuşmalar</h2>
-					<button id="profile-refresh-posts" class="text-xs px-3 py-1 rounded border border-gray-300 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800">Yenile</button>
-				</div>
+				<h2 class="text-xl font-semibold">Aktif Rezervasyonlarım</h2>
+				<div id="profile-my-reservations" class="grid gap-3 text-sm"></div>
+			</div>
+
+			<div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6 space-y-3">
+				<h2 class="text-xl font-semibold">Geçmiş Rezervasyonlarım</h2>
+				<div id="profile-my-past-reservations" class="grid gap-3 text-sm"></div>
+			</div>
+
+			<div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6 space-y-3">
+				<h2 class="text-xl font-semibold">Başlattığım Konuşmalar</h2>
 				<div id="profile-my-posts" class="grid gap-3 text-sm"></div>
 			</div>
 
 			<div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6 space-y-3">
-				<div class="flex items-center justify-between">
-					<h2 class="text-xl font-semibold">Yorumlarım</h2>
-					<button id="profile-refresh-comments" class="text-xs px-3 py-1 rounded border border-gray-300 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800">Yenile</button>
-				</div>
+				<h2 class="text-xl font-semibold">Yorumlarım</h2>
 				<div id="profile-my-comments" class="space-y-3 text-sm"></div>
 			</div>
 		</article>
@@ -72,6 +76,8 @@ const lastNameInput = document.getElementById('profile-last-name');
 const profileMessage = document.getElementById('profile-message');
 const myPostsContainer = document.getElementById('profile-my-posts');
 const myCommentsContainer = document.getElementById('profile-my-comments');
+const myReservationsContainer = document.getElementById('profile-my-reservations');
+const myPastReservationsContainer = document.getElementById('profile-my-past-reservations');
 
 function showGuest(){
 	if(guestSection) guestSection.classList.remove('hidden');
@@ -91,6 +97,13 @@ async function loadProfile(){
 			return;
 		}
 		const data = await res.json();
+		
+		// Admin/staff kullanıcılarını profil sayfasından yönlendir
+		if(data.is_staff || data.is_superuser){
+			window.location.href = '/admin/';
+			return;
+		}
+		
 		showAuth();
 		usernameInput.value = data.username || '';
 		emailInput.value = data.email || '';
@@ -147,11 +160,12 @@ async function loadMyPostsProfile(){
 		return;
 	}
 	const data = await res.json();
-	if(!data.length){
+	const posts = Array.isArray(data.results) ? data.results : (Array.isArray(data) ? data : []);
+	if(!posts.length){
 		myPostsContainer.innerHTML = '<p class="text-gray-500 dark:text-gray-400">Henüz konuşma başlatmadınız.</p>';
 		return;
 	}
-	myPostsContainer.innerHTML = data.map(post => {
+	myPostsContainer.innerHTML = posts.map(post => {
 		let ratingDisplay = '';
 		if (post.rating) {
 			const filledStars = '★'.repeat(post.rating);
@@ -190,11 +204,12 @@ async function loadMyCommentsProfile(){
 		return;
 	}
 	const data = await res.json();
-	if(!data.length){
+	const comments = Array.isArray(data.results) ? data.results : (Array.isArray(data) ? data : []);
+	if(!comments.length){
 		myCommentsContainer.innerHTML = '<p class="text-gray-500 dark:text-gray-400">Henüz yorum yapmadınız.</p>';
 		return;
 	}
-	myCommentsContainer.innerHTML = data.map(comment => {
+	myCommentsContainer.innerHTML = comments.map(comment => {
 		const postLink = `/community/#post-${comment.post_id}`;
 		return `
 		<article class="rounded-lg border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800 p-3 cursor-pointer hover:shadow-md transition-shadow" onclick="window.location.href='${postLink}'">
@@ -241,8 +256,101 @@ async function deleteCommentProfile(postId, commentId) {
 	}
 }
 
-document.getElementById('profile-refresh-posts').addEventListener('click', (e)=>{ e.preventDefault(); loadMyPostsProfile(); });
-document.getElementById('profile-refresh-comments').addEventListener('click', (e)=>{ e.preventDefault(); loadMyCommentsProfile(); });
+async function loadMyReservationsProfile(){
+	const res = await window.libmApi('/api/reservations/', { silent401: true });
+	if(!res.ok){
+		myReservationsContainer.innerHTML = '<p class="text-gray-500 dark:text-gray-400">Rezervasyonlarınız yüklenemedi.</p>';
+		return;
+	}
+	const data = await res.json();
+	const reservations = Array.isArray(data.results) ? data.results : (Array.isArray(data) ? data : []);
+	// Sadece aktif rezervasyonlar göster (PENDING, PICKED_UP)
+	const activeReservations = reservations.filter(r => r.status === 'PENDING' || r.status === 'PICKED_UP');
+	if(!activeReservations.length){
+		myReservationsContainer.innerHTML = '<p class="text-gray-500 dark:text-gray-400">Henüz aktif rezervasyonunuz yok.</p>';
+		return;
+	}
+	myReservationsContainer.innerHTML = activeReservations.map(res => {
+		const statusLabels = {
+			'PENDING': 'Beklemede',
+			'PICKED_UP': 'Teslim Alındı',
+			'CANCELLED': 'İptal Edildi',
+			'RETURNED': 'İade Edildi',
+			'EXPIRED': 'Süresi Doldu'
+		};
+		const statusColor = {
+			'PENDING': 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
+			'PICKED_UP': 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
+			'CANCELLED': 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
+			'RETURNED': 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
+			'EXPIRED': 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400'
+		};
+		return `
+		<article class="rounded-lg border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800 p-4">
+			<header class="flex items-start justify-between mb-2">
+				<div>
+					<p class="font-semibold">${res.book_title || 'Kitap'}</p>
+					<p class="text-xs text-gray-500">Rezervasyon #${res.id}</p>
+				</div>
+				<span class="text-xs px-2 py-1 rounded ${statusColor[res.status] || 'bg-gray-100'}">${statusLabels[res.status] || res.status}</span>
+			</header>
+			<div class="text-xs text-gray-600 dark:text-gray-400 space-y-1">
+				<p>📅 Alınacağı tarih: ${res.pickup_date ? new Date(res.pickup_date).toLocaleDateString('tr-TR', { year: 'numeric', month: 'long', day: 'numeric' }) : '-'}</p>
+				<p>📅 İade edileceği tarih: ${res.return_date ? new Date(res.return_date).toLocaleDateString('tr-TR', { year: 'numeric', month: 'long', day: 'numeric' }) : '-'}</p>
+				<p>💰 Depozito: ${res.deposit_amount} TL</p>
+			</div>
+		</article>
+		`;
+	}).join('');
+}
+
+async function loadMyPastReservationsProfile(){
+	const res = await window.libmApi('/api/reservations/', { silent401: true });
+	if(!res.ok){
+		myPastReservationsContainer.innerHTML = '<p class="text-gray-500 dark:text-gray-400">Geçmiş rezervasyonlarınız yüklenemedi.</p>';
+		return;
+	}
+	const data = await res.json();
+	const reservations = Array.isArray(data.results) ? data.results : (Array.isArray(data) ? data : []);
+	// Sadece geçmiş rezervasyonlar göster (RETURNED, CANCELLED)
+	const pastReservations = reservations.filter(r => r.status === 'RETURNED' || r.status === 'CANCELLED');
+	if(!pastReservations.length){
+		myPastReservationsContainer.innerHTML = '<p class="text-gray-500 dark:text-gray-400">Henüz geçmiş rezervasyonunuz yok.</p>';
+		return;
+	}
+	myPastReservationsContainer.innerHTML = pastReservations.map(res => {
+		const statusLabels = {
+			'PENDING': 'Beklemede',
+			'PICKED_UP': 'Teslim Alındı',
+			'CANCELLED': 'İptal Edildi',
+			'RETURNED': 'İade Edildi',
+			'EXPIRED': 'Süresi Doldu'
+		};
+		const statusColor = {
+			'PENDING': 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
+			'PICKED_UP': 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
+			'CANCELLED': 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
+			'RETURNED': 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
+			'EXPIRED': 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400'
+		};
+		return `
+		<article class="rounded-lg border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800 p-4">
+			<header class="flex items-start justify-between mb-2">
+				<div>
+					<p class="font-semibold">${res.book_title || 'Kitap'}</p>
+					<p class="text-xs text-gray-500">Rezervasyon #${res.id}</p>
+				</div>
+				<span class="text-xs px-2 py-1 rounded ${statusColor[res.status] || 'bg-gray-100'}">${statusLabels[res.status] || res.status}</span>
+			</header>
+			<div class="text-xs text-gray-600 dark:text-gray-400 space-y-1">
+				<p>📅 Alındığı tarih: ${res.picked_up_at ? new Date(res.picked_up_at).toLocaleDateString('tr-TR', { year: 'numeric', month: 'long', day: 'numeric' }) : (res.pickup_date ? new Date(res.pickup_date).toLocaleDateString('tr-TR', { year: 'numeric', month: 'long', day: 'numeric' }) : '-')}</p>
+				<p>📅 İade edildiği tarih: ${res.returned_at ? new Date(res.returned_at).toLocaleDateString('tr-TR', { year: 'numeric', month: 'long', day: 'numeric' }) : '-'}</p>
+				<p>💰 Depozito: ${res.deposit_amount} TL</p>
+			</div>
+		</article>
+		`;
+	}).join('');
+}
 
 (async function initProfile(){
 	const hasToken = !!localStorage.getItem('access');
@@ -252,6 +360,8 @@ document.getElementById('profile-refresh-comments').addEventListener('click', (e
 	}
 	await loadProfile();
 	if(authSection && !authSection.classList.contains('hidden')){
+		loadMyReservationsProfile();
+		loadMyPastReservationsProfile();
 		loadMyPostsProfile();
 		loadMyCommentsProfile();
 	}

@@ -6,6 +6,10 @@
 		<header class="mb-6 text-center">
 			<h2 class="text-2xl font-semibold">Ödeme</h2>
 			<p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Depozito tutarı: <strong>50 TL</strong></p>
+			<div id="date-info" class="mt-4 space-y-2 text-sm">
+				<p id="pickup-date-info" class="text-gray-600 dark:text-gray-400"></p>
+				<p id="return-date-info" class="text-gray-600 dark:text-gray-400"></p>
+			</div>
 		</header>
 		<form id="pay-form" class="space-y-4">
 			<input type="hidden" name="q" />
@@ -40,8 +44,44 @@
 const params = new URLSearchParams(window.location.search);
 const q = params.get('q') || '';
 const d = Number(params.get('d') || '1');
+const returnDate = params.get('return_date') || '';
+const pickupDate = params.get('pickup_date') || '';
 document.querySelector('input[name="q"]').value = q;
 document.querySelector('input[name="d"]').value = d;
+
+// Display pickup and return dates
+if(pickupDate || returnDate) {
+	if(pickupDate) {
+		const pickupDateInfo = document.getElementById('pickup-date-info');
+		if(pickupDateInfo) {
+			const date = new Date(pickupDate + 'T00:00:00');
+			const formattedDate = date.toLocaleDateString('tr-TR', { 
+				year: 'numeric', 
+				month: 'long', 
+				day: 'numeric' 
+			});
+			pickupDateInfo.textContent = `📅 Alınacağı tarih: ${formattedDate}`;
+		}
+	}
+	if(returnDate) {
+		// Display return date info
+		const returnDateInfo = document.getElementById('return-date-info');
+		if(returnDateInfo) {
+			const date = new Date(returnDate + 'T00:00:00');
+			const formattedDate = date.toLocaleDateString('tr-TR', { 
+				year: 'numeric', 
+				month: 'long', 
+				day: 'numeric' 
+			});
+			returnDateInfo.textContent = `📅 İade tarihi: ${formattedDate}`;
+		}
+	}
+}
+
+// Debug: Check if pickupDate is set
+console.log('[DEBUG payment.html] pickupDate from URL:', pickupDate);
+console.log('[DEBUG payment.html] pickupDate is empty?', !pickupDate);
+console.log('[DEBUG payment.html] Full URL params:', window.location.search);
 
 const form = document.getElementById('pay-form');
 const cardInput = document.querySelector('input[name="card_number"]');
@@ -121,6 +161,11 @@ cvvInput.addEventListener('keydown', (e) => {
 });
 form.addEventListener('submit', async (e) => {
 	e.preventDefault();
+	// Validate pickup date
+	if (!pickupDate) {
+		window.showToast('Hata: Alınacağı tarih eksik. Lütfen rezervasyonu baştan oluşturun.', 'error');
+		return;
+	}
 	// Fake validation of card fields, then create reservation
 	const bookSearch = q.trim();
 	if (!bookSearch) { window.showToast('Kitap adı eksik', 'error'); return; }
@@ -128,20 +173,51 @@ form.addEventListener('submit', async (e) => {
 	const exp = document.querySelector('input[name="exp"]').value.trim();
 	const cvv = document.querySelector('input[name="cvv"]').value.trim();
 	if (!/^(0[1-9]|1[0-2])\/\d{2}$/.test(exp)) { window.showToast('Geçersiz SKT (MM/YY)', 'error'); return; }
+	
+	// SKT'nin bugünden önceki olmadığını kontrol et
+	const [expMonth, expYear] = exp.split('/');
+	const now = new Date();
+	const currentYear = now.getFullYear() % 100; // Son 2 hane
+	const currentMonth = now.getMonth() + 1;
+	const expYearNum = parseInt(expYear);
+	const expMonthNum = parseInt(expMonth);
+	
+	if (expYearNum < currentYear || (expYearNum === currentYear && expMonthNum < currentMonth)) {
+		window.showToast('Kartın geçerlilik tarihi süresi dolmuştur', 'error');
+		return;
+	}
+	
 	if (!/^\d{3}$/.test(cvv)) { window.showToast('Geçersiz CVV', 'error'); return; }
 	try{
 		// Search book by title on client to get an ID
 		const booksRes = await window.libmApi('/api/books/');
 		if (!booksRes.ok) { throw new Error('Kitap listesi alınamadı'); }
-		const books = await booksRes.json();
+		const data = await booksRes.json();
+		const books = Array.isArray(data.results) ? data.results : (Array.isArray(data) ? data : []);
 		const found = books.find(b => (b.title||'').toLowerCase().includes(bookSearch.toLowerCase()));
 		if (!found) { window.showToast('Kitap bulunamadı', 'error'); return; }
-		const payload = { book: found.id, pickup_deadline_days: d, deposit_amount: 50 };
+		const payload = { book: found.id, pickup_deadline_days: d, pickup_date: pickupDate, deposit_amount: 50 };
+		console.log('📤 Gönderilen veri:', payload);
 		const res = await window.libmApi('/api/reservations/', { method:'POST', body: JSON.stringify(payload) });
 		const msg = document.getElementById('pay-msg');
-		if (res.ok) { msg.textContent = 'Ödeme başarılı, rezervasyon oluşturuldu'; window.showToast('Rezervasyon başarıyla oluşturuldu', 'success'); setTimeout(()=>{ window.location.href = '/reservations/'; }, 800); }
+		console.log('📥 Response status:', res.status, 'OK:', res.ok);
+		if (res.ok) { 
+			msg.textContent = '✓ Ödeme başarılı, rezervasyon oluşturuldu'; 
+			window.showToast('Rezervasyon başarıyla oluşturuldu!', 'success'); 
+			setTimeout(()=>{ window.location.href = '/'; }, 1500); 
+		}
 		else if (res.status === 401) { window.showToast('Giriş yapmanız gerekiyor', 'error'); }
-		else { window.showToast('Rezervasyon oluşturulamadı', 'error'); }
+		else {
+			try {
+				const errorData = await res.json();
+				console.error('❌ API Hatası:', errorData);
+				const errorMsg = errorData.detail || errorData.pickup_deadline_days?.[0] || errorData.book?.[0] || JSON.stringify(errorData) || 'Rezervasyon oluşturulamadı';
+				window.showToast(errorMsg, 'error');
+			} catch (e) {
+				console.error('❌ Response parse hatası:', e);
+				window.showToast('Rezervasyon oluşturulamadı', 'error');
+			}
+		}
 	}catch(err){ window.showToast('Sunucu hatası', 'error'); }
 });
 </script>

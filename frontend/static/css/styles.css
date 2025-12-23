@@ -16,3 +16,54 @@ input,button{padding:8px;margin-top:4px}
 .shake-animation {
 	animation: shake 0.5s ease-in-out;
 }
+
+/* Footer Styles */
+footer a {
+	transition: color 0.2s ease-in-out;
+}
+
+footer a:hover {
+	color: rgb(37, 99, 235);
+}
+
+footer h3, footer h4 {
+	letter-spacing: -0.01em;
+}
+
+/* Footer Link Groups */
+footer ul li a {
+	word-break: break-word;
+}
+
+/* Payment Method Placeholders */
+footer img {
+	object-fit: contain;
+}
+
+/* Social Media Links */
+footer a.social-icon {
+	transition: all 0.2s ease-in-out;
+}
+
+footer a.social-icon:hover {
+	border-color: rgb(37, 99, 235);
+	background-color: rgb(37, 99, 235);
+	color: white;
+}
+
+/* Dark mode support */
+.dark footer a:hover {
+	color: rgb(96, 165, 250);
+}
+
+.dark footer a.social-icon:hover {
+	border-color: rgb(96, 165, 250);
+	background-color: rgb(96, 165, 250);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+	footer {
+		padding: 2rem 1rem;
+	}
+}

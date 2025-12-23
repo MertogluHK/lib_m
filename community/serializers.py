@@ -15,13 +15,14 @@ class CommunityCommentSerializer(serializers.ModelSerializer):
 class CommunityPostSerializer(serializers.ModelSerializer):
 	user_username = serializers.CharField(source='user.username', read_only=True)
 	comment_count = serializers.IntegerField(read_only=True)
+	comments = CommunityCommentSerializer(many=True, read_only=True)
 	book = serializers.PrimaryKeyRelatedField(queryset=Book.objects.all(), write_only=True)
 	book_id = serializers.IntegerField(source='book.id', read_only=True)
 
 	class Meta:
 		model = CommunityPost
-		fields = ['id', 'user_username', 'book', 'book_id', 'book_title', 'content', 'rating', 'created_at', 'comment_count']
-		read_only_fields = ['id', 'user_username', 'created_at', 'comment_count', 'book_title', 'book_id']
+		fields = ['id', 'user_username', 'book', 'book_id', 'book_title', 'content', 'rating', 'created_at', 'comment_count', 'comments']
+		read_only_fields = ['id', 'user_username', 'created_at', 'comment_count', 'book_title', 'book_id', 'comments']
 
 	def validate_rating(self, value):
 		if value is None:

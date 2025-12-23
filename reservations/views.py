@@ -21,6 +21,7 @@ class ReservationViewSet(viewsets.ModelViewSet):
 
 	def perform_create(self, serializer):
 		book = serializer.validated_data['book']
+		pickup_date = serializer.validated_data.get('pickup_date')
 		with transaction.atomic():
 			book_locked = Book.objects.select_for_update().get(pk=book.pk)
 			if book_locked.stock <= 0:
@@ -28,7 +29,7 @@ class ReservationViewSet(viewsets.ModelViewSet):
 			book_locked.stock -= 1
 			book_locked.reserved_count += 1
 			book_locked.save(update_fields=['stock', 'reserved_count'])
-			serializer.save(user=self.request.user, status=Reservation.Status.PENDING, deposit_amount=50)
+			serializer.save(user=self.request.user, status=Reservation.Status.PENDING, deposit_amount=50, pickup_date=pickup_date)
 
 	def get_queryset(self):
 		qs = super().get_queryset()
@@ -88,3 +89,80 @@ class ReservationViewSet(viewsets.ModelViewSet):
 			reservation.returned_at = timezone.now()
 			reservation.save(update_fields=['status', 'returned_at'])
 		return Response({'detail': 'Book returned to stock'})
+
+	@action(detail=False, methods=['post'])
+	def check_availability(self, request):
+		"""Belirtilen tarihte kitabın uygun olup olmadığını kontrol et"""
+		from datetime import datetime, timedelta
+		book_id = request.data.get('book_id')
+		pickup_date_str = request.data.get('pickup_date')  # YYYY-MM-DD format
+		
+		if not book_id or not pickup_date_str:
+			return Response({'error': 'book_id ve pickup_date gerekli'}, status=400)
+		
+		try:
+			pickup_date = datetime.strptime(pickup_date_str, '%Y-%m-%d').date()
+		except ValueError:
+			return Response({'error': 'Geçersiz tarih formatı (YYYY-MM-DD)'}, status=400)
+		
+		try:
+			book = Book.objects.get(pk=book_id)
+		except Book.DoesNotExist:
+			return Response({'error': 'Kitap bulunamadı'}, status=404)
+		
+		# Stoğu kontrol et
+		if book.stock > 0:
+			return Response({
+				'available': True,
+				'message': 'Bu kitap bu tarihte stoktadır',
+				'next_available_date': None
+			})
+		
+		# Stok yoksa - iade edecekleri kontrol et
+		# Pickup date'ten önce iade edecek rezervasyonları bul
+		pending_reservations = Reservation.objects.filter(
+			book=book,
+			status=Reservation.Status.PICKED_UP
+		).select_related('user')
+		
+		earliest_return = None
+		for res in pending_reservations:
+			if res.return_date and res.return_date < pickup_date:
+				if not earliest_return or res.return_date < earliest_return:
+					earliest_return = res.return_date
+		
+		if earliest_return:
+			# Iade edildikten sonra gün ekle (iade edildikten sabah uygun)
+			next_available = earliest_return + timedelta(days=1)
+			return_str = earliest_return.strftime("%d.%m.%Y")
+			next_str = next_available.strftime("%d.%m.%Y")
+			return Response({
+				'available': True,
+				'message': f'Bu kitap o tarihte stoktada yok ancak {return_str}\'de iade edilecek, {next_str}\'den itibaren uygun',
+				'next_available_date': next_available.isoformat(),
+				'return_before_date': earliest_return.isoformat()
+			})
+		
+		# Hiç iade yok veya tamamı seçilmiş tarihten sonra - en yakın iade bulunması gerekiyor
+		all_future_returns = Reservation.objects.filter(
+			book=book,
+			status=Reservation.Status.PICKED_UP
+		).exclude(return_date__isnull=True).order_by('return_date')
+		
+		if all_future_returns.exists():
+			earliest = all_future_returns.first().return_date
+			next_available = earliest + timedelta(days=1)
+			earliest_str = earliest.strftime("%d.%m.%Y")
+			next_str = next_available.strftime("%d.%m.%Y")
+			return Response({
+				'available': False,
+				'message': f'Bu kitap o tarihte stoktada yok. En yakın iade tarihi: {earliest_str}, {next_str}\'den itibaren uygun',
+				'next_available_date': next_available.isoformat(),
+				'return_before_date': earliest.isoformat()
+			})
+		
+		return Response({
+			'available': False,
+			'message': 'Bu kitap şu anda stoktada bulunmamaktadır ve hiç iade planı yoktur',
+			'next_available_date': None
+		})
