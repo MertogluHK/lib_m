@@ -5,13 +5,21 @@
 	<article class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6 shadow-sm">
 		<header class="mb-6 text-center">
 			<h2 class="text-2xl font-semibold">Ödeme</h2>
+			
+			<!-- Stock unavailable message -->
+			{% if not stock_available %}
+			<div class="mt-4 p-4 rounded bg-red-50 dark:bg-red-900 border border-red-200 dark:border-red-800">
+				<p class="text-red-800 dark:text-red-100 text-sm font-medium">⚠️ {{ stock_message }}</p>
+			</div>
+			{% else %}
 			<p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Depozito tutarı: <strong>50 TL</strong></p>
+			{% endif %}
 			<div id="date-info" class="mt-4 space-y-2 text-sm">
 				<p id="pickup-date-info" class="text-gray-600 dark:text-gray-400"></p>
 				<p id="return-date-info" class="text-gray-600 dark:text-gray-400"></p>
 			</div>
 		</header>
-		<form id="pay-form" class="space-y-4">
+		<form id="pay-form" class="space-y-4"{% if not stock_available %} style="opacity: 0.5; pointer-events: none;"{% endif %}>
 			<input type="hidden" name="q" />
 			<input type="hidden" name="d" />
 			<label class="block">
@@ -88,6 +96,16 @@ const cardInput = document.querySelector('input[name="card_number"]');
 const expInput = document.querySelector('input[name="exp"]');
 const nameInput = document.querySelector('input[name="card_name"]');
 const cvvInput = document.querySelector('input[name="cvv"]');
+
+// Server-side stock check
+const serverStockAvailable = {{ stock_available|yesno:"true,false" }};
+if (!serverStockAvailable) {
+	// Form gönderilmesini engelle
+	form.addEventListener('submit', (e) => {
+		e.preventDefault();
+		window.showToast('{{ stock_message }}', 'error');
+	});
+}
 
 function toTitleCaseTR(str){
 	// Live title-case without trimming or collapsing spaces; capitalize first char and any char after a space
@@ -220,15 +238,6 @@ form.addEventListener('submit', async (e) => {
 		}
 	}catch(err){ window.showToast('Sunucu hatası', 'error'); }
 });
-// If server indicates stock is unavailable, show modal and disable form
-const serverStockAvailable = {{ stock_available|yesno:"true,false" }};
-const serverStockMessage = "{{ stock_message|escapejs }}";
-if (serverStockAvailable === false) {
-	// Show modal-like inline message and disable inputs
-	window.showToast(serverStockMessage || 'Stok mevcut değildir', 'error');
-	// Disable all inputs and submit button
-	Array.from(form.querySelectorAll('input, button')).forEach(el => el.disabled = true);
-}
 </script>
 {% endblock %}
 

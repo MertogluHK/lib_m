@@ -44,26 +44,28 @@ def reservations_page(request):
 	return render(request, 'frontend/reservations.html')
 
 def payment_page(request):
-	# Server-side guard: eğer query string'de kitap bilgisi varsa stok kontrolü yap
-	from books.models import Book
-	q = request.GET.get('q') or request.GET.get('book_id')
-	stock_available = True
-	stock_message = ''
-	if q:
-		try:
-			# Öncelikle numeric id olarak dene
-			if str(q).isdigit():
-				book = Book.objects.filter(pk=int(q)).first()
-			else:
-				book = Book.objects.filter(title__icontains=q).first()
-			if book:
-				stock_available = book.stock > 0
-				if not stock_available:
-					stock_message = 'Seçilen kitap şu anda stokta bulunmamaktadır.'
-		except Exception:
-			# Herhangi bir hata durumunda stok kontrolünü gevşet (client-side tekrar kontrol eder)
-			stock_available = True
-	return render(request, 'frontend/payment.html', { 'stock_available': stock_available, 'stock_message': stock_message })
+    # Server-side guard: eğer query string'de kitap bilgisi varsa stok kontrolü yap
+    from books.models import Book
+    q = request.GET.get('q', '').strip()
+    stock_available = True
+    stock_message = ''
+    
+    if q:
+        try:
+            # Kitap adından arayıp stokunu kontrol et
+            book = Book.objects.filter(title__icontains=q).first()
+            if book:
+                stock_available = book.stock > 0
+                if not stock_available:
+                    stock_message = 'Seçilen kitap şu anda stokta bulunmamaktadır.'
+        except Exception:
+            # Hata durumunda ödemeye izin ver (client-side kontrol yapacak)
+            stock_available = True
+    
+    return render(request, 'frontend/payment.html', {
+        'stock_available': stock_available,
+        'stock_message': stock_message
+    })
 
 def admin_dashboard_page(request):
 	return render(request, 'frontend/admin_dashboard.html')
