@@ -370,6 +370,7 @@ initForm.addEventListener('submit', async (e) => {
 		});
 
 		const availData = await availRes.json();
+		console.log('📦 Stok kontrolü sonucu:', availData);
 		
 		if (!availData.available && availData.next_available_date) {
 			// Stok yok ama alternatif tarih var
@@ -384,6 +385,7 @@ initForm.addEventListener('submit', async (e) => {
 			dateInput.value = availData.next_available_date.split('T')[0];
 		} else if (!availData.available) {
 			// Stok yoksa merkezde modal göster
+			console.log('❌ Stok yoktur, modal gösteriliyor:', availData.message);
 			showStockModal(availData.message || 'Stok mevcut değildir');
 			return;
 		}

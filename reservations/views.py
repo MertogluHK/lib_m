@@ -38,6 +38,9 @@ class ReservationViewSet(viewsets.ModelViewSet):
 		return qs
 
 	def get_permissions(self):
+		# check_availability is public (no auth required)
+		if self.action == 'check_availability':
+			return [permissions.AllowAny()]
 		# Ensure authenticated for main actions; owner/admin check is object-level via IsOwnerOrAdmin
 		if self.action in ['list', 'retrieve', 'create', 'pickup', 'cancel', 'return_book', 'update', 'partial_update', 'destroy']:
 			return [permissions.IsAuthenticated(), IsOwnerOrAdmin()]
