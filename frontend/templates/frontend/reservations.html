@@ -65,6 +65,16 @@
 		</div>
 	</div>
 </div>
+<!-- Stock Unavailable Modal -->
+<div id="stock-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+	<div class="bg-white dark:bg-gray-900 rounded-xl shadow-lg p-6 max-w-sm w-full mx-4 text-center">
+		<h3 class="text-lg font-semibold mb-2">Stok mevcut değildir</h3>
+		<p id="stock-modal-msg" class="text-sm text-gray-600 dark:text-gray-300 mb-4">Seçilen kitap şu anda stokta yoktur.</p>
+		<div class="flex justify-center">
+			<button id="stock-modal-ok" class="px-6 py-2 rounded bg-blue-600 text-white">Tamam</button>
+		</div>
+	</div>
+</div>
 {% endblock %}
 {% block styles %}
 <style>
@@ -374,8 +384,15 @@ initForm.addEventListener('submit', async (e) => {
 			const dateInput = document.getElementById('pickup-date-input');
 			dateInput.value = availData.next_available_date.split('T')[0];
 		} else if (!availData.available) {
-			window.showToast(availData.message || 'Bu tarihte kitap uygun değildir', 'error');
-			return;
+			// Eğer bir sonraki uygun tarih yoksa, merkezde tek düğmeli modal göster
+			if (!availData.next_available_date) {
+				showStockModal(availData.message || 'Stok mevcut değildir');
+				return;
+			} else {
+				// Diğer durumlarda (ör. mesaj ile birlikte) kullanıcıya toast göster
+				window.showToast(availData.message || 'Bu tarihte kitap uygun değildir', 'error');
+				return;
+			}
 		}
 	} catch (err) {
 		console.error('Availability check hatası:', err);
@@ -414,6 +431,19 @@ document.getElementById('modal-ok-btn').addEventListener('click', () => {
 
 document.getElementById('modal-login-btn').addEventListener('click', () => {
 	window.location.href = '/login/';
+});
+
+// Stock modal helper
+function showStockModal(message){
+	const modal = document.getElementById('stock-modal');
+	if(!modal) return;
+	const msgEl = document.getElementById('stock-modal-msg');
+	if(msgEl) msgEl.textContent = message || 'Stok mevcut değildir';
+	modal.classList.remove('hidden');
+}
+
+document.getElementById('stock-modal-ok')?.addEventListener('click', () => {
+	document.getElementById('stock-modal').classList.add('hidden');
 });
 
 loadReservations();
