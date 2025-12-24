@@ -220,6 +220,15 @@ form.addEventListener('submit', async (e) => {
 		}
 	}catch(err){ window.showToast('Sunucu hatası', 'error'); }
 });
+// If server indicates stock is unavailable, show modal and disable form
+const serverStockAvailable = {{ stock_available|yesno:"true,false" }};
+const serverStockMessage = "{{ stock_message|escapejs }}";
+if (serverStockAvailable === false) {
+	// Show modal-like inline message and disable inputs
+	window.showToast(serverStockMessage || 'Stok mevcut değildir', 'error');
+	// Disable all inputs and submit button
+	Array.from(form.querySelectorAll('input, button')).forEach(el => el.disabled = true);
+}
 </script>
 {% endblock %}
 
