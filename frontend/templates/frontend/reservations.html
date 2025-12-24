@@ -65,14 +65,13 @@
 		</div>
 	</div>
 </div>
+
 <!-- Stock Unavailable Modal -->
 <div id="stock-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
 	<div class="bg-white dark:bg-gray-900 rounded-xl shadow-lg p-6 max-w-sm w-full mx-4 text-center">
 		<h3 class="text-lg font-semibold mb-2">Stok mevcut değildir</h3>
-		<p id="stock-modal-msg" class="text-sm text-gray-600 dark:text-gray-300 mb-4">Seçilen kitap şu anda stokta yoktur.</p>
-		<div class="flex justify-center">
-			<button id="stock-modal-ok" class="px-6 py-2 rounded bg-blue-600 text-white">Tamam</button>
-		</div>
+		<p id="stock-modal-msg" class="text-sm text-gray-600 dark:text-gray-300 mb-6">Seçilen kitap şu anda stokta yoktur.</p>
+		<button id="stock-modal-ok" class="px-6 py-2 rounded bg-blue-600 text-white hover:bg-blue-700">Tamam</button>
 	</div>
 </div>
 {% endblock %}
@@ -384,15 +383,9 @@ initForm.addEventListener('submit', async (e) => {
 			const dateInput = document.getElementById('pickup-date-input');
 			dateInput.value = availData.next_available_date.split('T')[0];
 		} else if (!availData.available) {
-			// Eğer bir sonraki uygun tarih yoksa, merkezde tek düğmeli modal göster
-			if (!availData.next_available_date) {
-				showStockModal(availData.message || 'Stok mevcut değildir');
-				return;
-			} else {
-				// Diğer durumlarda (ör. mesaj ile birlikte) kullanıcıya toast göster
-				window.showToast(availData.message || 'Bu tarihte kitap uygun değildir', 'error');
-				return;
-			}
+			// Stok yoksa merkezde modal göster
+			showStockModal(availData.message || 'Stok mevcut değildir');
+			return;
 		}
 	} catch (err) {
 		console.error('Availability check hatası:', err);
@@ -434,16 +427,34 @@ document.getElementById('modal-login-btn').addEventListener('click', () => {
 });
 
 // Stock modal helper
-function showStockModal(message){
+function showStockModal(message) {
 	const modal = document.getElementById('stock-modal');
-	if(!modal) return;
+	if (!modal) return;
 	const msgEl = document.getElementById('stock-modal-msg');
-	if(msgEl) msgEl.textContent = message || 'Stok mevcut değildir';
+	if (msgEl) msgEl.textContent = message || 'Stok mevcut değildir';
 	modal.classList.remove('hidden');
+	// Focus OK button for accessibility
+	setTimeout(() => {
+		const ok = document.getElementById('stock-modal-ok');
+		if (ok) ok.focus();
+	}, 50);
 }
 
 document.getElementById('stock-modal-ok')?.addEventListener('click', () => {
-	document.getElementById('stock-modal').classList.add('hidden');
+	const modal = document.getElementById('stock-modal');
+	const bookInput = document.getElementById('book-query-input');
+	const daysInput = document.getElementById('days-input');
+	
+	// Clear inputs
+	if (bookInput) {
+		bookInput.value = '';
+		bookInput.removeAttribute('data-prefilled');
+	}
+	if (daysInput) daysInput.value = '';
+	
+	// Hide modal and reload
+	if (modal) modal.classList.add('hidden');
+	setTimeout(() => { window.location.reload(); }, 100);
 });
 
 loadReservations();
