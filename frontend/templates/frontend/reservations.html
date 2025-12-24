@@ -440,6 +440,14 @@ function showStockModal(message) {
 	}, 50);
 }
 
+// Prevent closing modal by clicking outside (backdrop)
+document.getElementById('stock-modal')?.addEventListener('click', (e) => {
+	// Sadece modal'ın dışa tıklanması engelle, butona tıklanmayı engelleme
+	if (e.target.id === 'stock-modal') {
+		e.stopPropagation();
+	}
+});
+
 document.getElementById('stock-modal-ok')?.addEventListener('click', () => {
 	const modal = document.getElementById('stock-modal');
 	const bookInput = document.getElementById('book-query-input');
