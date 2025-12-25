@@ -74,8 +74,12 @@ form.addEventListener('submit', async (e) => {
 	const mode = form.dataset.mode || 'user';
 	const formData = new FormData(form);
 	const payload = { username: formData.get('username'), password: formData.get('password') };
+	console.debug('login submit', mode, payload);
+	// prevent duplicate submits
+	const submitBtn = form.querySelector('button[type="submit"]');
+	if (submitBtn) submitBtn.disabled = true;
 	try{
-		const res = await window.libmApi(endpoints[mode], { method:'POST', body: JSON.stringify(payload) });
+		const res = await window.libmApi(endpoints[mode], { method:'POST', body: JSON.stringify(payload), skipToken: true, silent401: true });
 		const data = await res.json();
 		if (res.ok) {
 			localStorage.setItem('access', data.access);
@@ -84,12 +88,26 @@ form.addEventListener('submit', async (e) => {
 			loginMsg.textContent = 'Giriş başarılı, yönlendiriliyorsunuz...';
 			window.location.href = redirects[mode];
 		} else {
-			loginMsg.textContent = data.detail || 'Giriş başarısız';
-			window.showToast(data.detail || 'Giriş başarısız', 'error');
+			// Hata mesajını al (detail veya doğrudan string olabilir)
+			let errorMessage = 'Giriş başarısız';
+			if (data.detail) {
+				errorMessage = typeof data.detail === 'string' ? data.detail : JSON.stringify(data.detail);
+			} else if (data.non_field_errors && data.non_field_errors.length > 0) {
+				errorMessage = data.non_field_errors[0];
+			}
+			
+			// Engellenen hesap mesajı için modal göster
+			if (errorMessage.toLowerCase().includes('askıya')) {
+				window.showModal('Hesabınız Askıya Alınmıştır', errorMessage);
+			} else {
+				loginMsg.textContent = errorMessage;
+				window.showToast(errorMessage, 'error');
+			}
 		}
 	}catch(err){
 		window.showToast('Sunucuya ulaşılamıyor', 'error');
 	}
+	if (submitBtn) submitBtn.disabled = false;
 });
 
 switchMode('user');

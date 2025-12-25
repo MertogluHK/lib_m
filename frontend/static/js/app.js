@@ -137,8 +137,46 @@
 	}
 	window.showToast = showToast;
 
+	// General Modal helper
+	function showModal(title, message, primaryBtnText = 'Tamam', primaryBtnCallback = null) {
+		const modal = document.getElementById('generalModal');
+		const titleEl = document.getElementById('modalTitle');
+		const messageEl = document.getElementById('modalMessage');
+		const btnContainer = document.getElementById('modalButtons');
+		
+		titleEl.textContent = title;
+		messageEl.textContent = message;
+		
+		// Clear previous buttons
+		btnContainer.innerHTML = '';
+		
+		// Add primary button
+		const primaryBtn = document.createElement('button');
+		primaryBtn.className = 'flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition';
+		primaryBtn.textContent = primaryBtnText;
+		primaryBtn.addEventListener('click', () => {
+			modal.classList.add('hidden');
+			if (primaryBtnCallback) primaryBtnCallback();
+		});
+		btnContainer.appendChild(primaryBtn);
+		
+		modal.classList.remove('hidden');
+	}
+	window.showModal = showModal;
+
+	// Modal'ı kapat eğer dışına tıklanırsa
+	const generalModal = document.getElementById('generalModal');
+	if (generalModal) {
+		generalModal.addEventListener('click', (e) => {
+			if (e.target === generalModal) {
+				generalModal.classList.add('hidden');
+			}
+		});
+	}
+
     // global API helper with optional silent 401
-    window.libmApi = async function(path, options={}){
+	window.libmApi = async function(path, options={}){
+		console.debug('libmApi request', path, options && options.skipToken, options && options.silent401);
 		let token = localStorage.getItem('access');
 		const headers = Object.assign({'Content-Type': 'application/json'}, options.headers||{});
 		
@@ -148,6 +186,11 @@
 		}
 		
 		let res = await fetch(path, { ...options, headers });
+
+		// If caller explicitly asked to skip token handling, return raw response
+		if (options && options.skipToken) {
+			return res;
+		}
 		
 		// Check for token errors - if 401, it's definitely a token error
 		// Also check response body for token error messages

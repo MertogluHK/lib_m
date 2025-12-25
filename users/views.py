@@ -46,10 +46,12 @@ class MeView(views.APIView):
 
 
 class UserTokenObtainPairView(TokenObtainPairView):
+	permission_classes = []
 	serializer_class = UserTokenObtainPairSerializer
 
 
 class AdminTokenObtainPairView(TokenObtainPairView):
+	permission_classes = []
 	serializer_class = AdminTokenObtainPairSerializer
 
 

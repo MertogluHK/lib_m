@@ -72,3 +72,7 @@ def admin_dashboard_page(request):
 
 def profile_page(request):
 	return render(request, 'frontend/profile.html')
+
+def stock_unavailable_page(request):
+	# Simple blank page with centered notification when a selected book is out of stock
+	return render(request, 'frontend/stock_unavailable.html')

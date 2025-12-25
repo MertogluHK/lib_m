@@ -11,5 +11,6 @@ urlpatterns = [
 	path('profile/', views.profile_page, name='profile'),
 	path('reservations/', views.reservations_page, name='reservations'),
 	path('payment/', views.payment_page, name='payment'),
+	path('stock-unavailable/', views.stock_unavailable_page, name='stock_unavailable'),
 	path('admin-panel/', views.admin_dashboard_page, name='admin_dashboard'),
 ]

@@ -248,7 +248,7 @@ function hideSuggestions(){
 }
 
 async function fetchBookSuggestions(term){
-	if(!term || term.length < 2){
+	if(!term || term.length < 1){
 		hideSuggestions();
 		return;
 	}
@@ -287,7 +287,7 @@ if(bookInput) {
 
 	bookInput.addEventListener('focus', () => {
 		const term = bookInput.value.trim();
-		if(term && term.length >= 2) {
+		if(term && term.length >= 1) {
 			fetchBookSuggestions(term);
 		}
 	});
@@ -367,33 +367,10 @@ initForm.addEventListener('submit', async (e) => {
 			return;
 		}
 
-		// Stok kullanılabilirliğini kontrol et
-		const availRes = await window.libmApi('/api/reservations/check_availability/', {
-			method: 'POST',
-			body: JSON.stringify({
-				book_id: foundBook.id,
-				pickup_date: pickupDate
-			})
-		});
-
-		const availData = await availRes.json();
-		console.log('📦 Stok kontrolü sonucu:', availData);
-		
-		if (!availData.available && availData.next_available_date) {
-			// Stok yok ama alternatif tarih var
-			const nextDate = new Date(availData.next_available_date);
-			const nextDateStr = nextDate.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' });
-			const msg = availData.message + `\n\n💡 Alternatif olarak ${nextDateStr} tarihinden itibaren seçim yapabilirsiniz.`;
-			if (!confirm(msg + '\n\nAlternatif tarihe değiştirmek ister misiniz?')) {
-				return;
-			}
-			// Tarihi değiştir
-			const dateInput = document.getElementById('pickup-date-input');
-			dateInput.value = availData.next_available_date.split('T')[0];
-		} else if (!availData.available) {
-			// Stok yoksa merkezde modal göster
-			console.log('❌ Stok yoktur, modal gösteriliyor:', availData.message);
-			showStockModal(availData.message || 'Stok mevcut değildir');
+		// Kitabın stok bilgisini kontrol et
+		if (foundBook.stock <= 0) {
+			// Stok yoksa boş sayfaya yönlendir
+			window.location.href = '/stock-unavailable/';
 			return;
 		}
 	} catch (err) {

@@ -1,4 +1,5 @@
 from django.contrib.auth.models import User
+from django.contrib.auth import authenticate
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
@@ -35,12 +36,37 @@ class RoleAwareTokenObtainPairSerializer(TokenObtainPairSerializer):
 		return token
 
 	def validate(self, attrs):
-		data = super().validate(attrs)
-		user = self.user
+		username = attrs.get('username') or attrs.get('email')
+		password = attrs.get('password')
+		# Try to authenticate normally
+		user = authenticate(username=username, password=password)
+		if user is None:
+			# If authentication failed, check if the user exists and password matches
+			try:
+				maybe_user = User.objects.get(username=username)
+			except User.DoesNotExist:
+				raise serializers.ValidationError('No active account found with the given credentials')
+			# If password matches but user is inactive, show a clear message
+			if maybe_user.check_password(password) and not maybe_user.is_active:
+				raise serializers.ValidationError('Hesabınız askıya alınmıştır. Yönetici ile iletişime geçiniz.')
+			# Otherwise return the generic error
+			raise serializers.ValidationError('No active account found with the given credentials')
+		# At this point authentication succeeded
+		# Enforce staff/user restrictions for endpoint
 		if self.require_staff and not user.is_staff:
-			raise serializers.ValidationError({'detail': 'Bu giriş sadece yöneticiler içindir.'})
+			raise serializers.ValidationError('Bu giriş sadece yöneticiler içindir.')
 		if not self.allow_staff and user.is_staff:
-			raise serializers.ValidationError({'detail': 'Yöneticiler bu bölümden giriş yapamaz.'})
+			raise serializers.ValidationError('Yöneticiler bu bölümden giriş yapamaz.')
+		# If non-staff user, ensure active
+		if not user.is_staff and not user.is_active:
+			raise serializers.ValidationError('Hesabınız askıya alınmıştır. Yönetici ile iletişime geçiniz.')
+		# Build token pair
+		refresh = self.get_token(user)
+		data = {
+			'refresh': str(refresh),
+			'access': str(refresh.access_token),
+		}
+		self.user = user
 		data['role'] = 'admin' if user.is_staff else 'user'
 		data['username'] = user.username
 		return data
