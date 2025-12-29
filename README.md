@@ -3,6 +3,14 @@
 Bu proje, Django web çatısı kullanılarak geliştirilmiş bir **Kütüphane Yönetim Sistemi**dir.  
 Proje, bir bitirme ödevi kapsamında geliştirilmiş olup kitap yönetimi, kullanıcı değerlendirmeleri ve rezervasyon süreçlerini kapsamaktadır.
 
+## Anasayfa
+
+<img width="1000" height="479" alt="image" src="https://github.com/user-attachments/assets/d959b28f-6100-45c0-8a23-d9b36e79ae40" />
+
+## Yönetim
+
+<img width="1000" height="728" alt="image" src="https://github.com/user-attachments/assets/8b4475d1-b903-4a1e-bd05-edfc2bce32ed" />
+
 ## Özellikler
 
 - Kitap ekleme, güncelleme, silme ve listeleme
@@ -81,5 +89,19 @@ POSTGRES_PASSWORD=*****
 DJANGO_SECRET_KEY=*****
 
 ```
+5. Migration işlemlerini uygulayın
+
+```
+
+python manage.py migrate
+
+```
+
+6. Sunucuyu Başlatın
 
 
+```
+
+python manage.py runserver
+
+```
