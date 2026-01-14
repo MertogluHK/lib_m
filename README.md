@@ -34,12 +34,19 @@ Proje, bir bitirme ödevi kapsamında geliştirilmiş olup kitap yönetimi, kull
 ## Proje Yapısı
 
 lib_ms/
+
 ├── books/ # Kitap ve değerlendirme işlemleri
+
 ├── reservations/ # Rezervasyon (ödünç alma) işlemleri
+
 ├── users/ # Kullanıcı işlemleri ve yetkilendirme
+
 ├── community/ # Topluluk / etkileşim modülü
+
 ├── frontend/ # Arayüz ve statik dosyalar
+
 ├── lib_ms/ # Proje ayarları
+
 └── manage.py
 
 
@@ -68,10 +75,15 @@ python -m pip install -r requirements.txt
 4. Ortam değişkenlerini ayarlayın
 
 DB_ENGINE=postgres
+
 POSTGRES_DB=book_db
+
 POSTGRES_USER=postgres
+
 POSTGRES_PASSWORD=*****
+
 DJANGO_SECRET_KEY=*****
+
 
 5. Migration işlemlerini uygulayın
 
