@@ -899,10 +899,17 @@ if(communityList){
 		const commentDeleteBtn = e.target.closest('button[data-comment-delete]');
 		if(commentDeleteBtn){
 			const commentId = commentDeleteBtn.dataset.commentDelete;
+			// Find the post ID from the parent container
+			const postContainer = commentDeleteBtn.closest('.community-dropdown-content');
+			const postId = postContainer ? postContainer.dataset.postId : null;
+			if(!postId){
+				window.showToast('Gönderi ID bulunamadı', 'error');
+				return;
+			}
 			if(!confirm('Bu yorumu silmek istediğinize emin misiniz?')){
 				return;
 			}
-			const res = await window.libmApi(`/api/community/comments/${commentId}/`, { method:'DELETE', silent401: true });
+			const res = await window.libmApi(`/api/community/posts/${postId}/comments/${commentId}/`, { method:'DELETE', silent401: true });
 			if(res.ok){
 				window.showToast('Yorum silindi', 'success');
 				loadCommunity();
